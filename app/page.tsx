@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { motion, AnimatePresence, useMotionValue, useMotionTemplate } from 'motion/react';
+import { motion, AnimatePresence, useMotionValue, useMotionTemplate, useScroll, useTransform, useSpring } from 'framer-motion';
 import {
   Navigation, Play, Pause, SkipForward, SkipBack, CircleDot,
   Calendar, MapPin, Instagram, Music2, Disc, ArrowRight, X, Menu, AudioLines,
@@ -47,7 +47,7 @@ function NavigationBar({ isDepth }: { isDepth: boolean }) {
               className="mt-4 flex flex-col gap-2 w-full px-3 pb-3"
             >
               {[
-                { name: 'MUSIC', icon: AudioLines, href: '#vault' },
+                { name: 'MIX ARCHIVE', icon: AudioLines, href: '#vault' },
                 { name: 'CONTACT ME', icon: Disc, href: '#booking' }
               ].map((link, i) => (
                 <motion.a
@@ -73,31 +73,68 @@ function NavigationBar({ isDepth }: { isDepth: boolean }) {
 }
 
 function HeroNode({ isDepth }: { isDepth: boolean }) {
+  const { scrollY } = useScroll();
+
+  // Instantly reactive transforms with no state overhead (runs 60fps on animation thread)
+  const yText = useTransform(scrollY, (v) => {
+    const wh = typeof window !== "undefined" ? window.innerHeight : 1000;
+    const target = 56 - (wh / 2);
+    const progress = Math.min(Math.max(v / 500, 0), 1);
+    return progress * target;
+  });
+
+  const scaleText = useTransform(scrollY, (v) => {
+    const progress = Math.min(Math.max(v / 500, 0), 1);
+    return 1 - (progress * 0.75); // 1 down to 0.25
+  });
+
+  const headerOpacity = useTransform(scrollY, (v) => {
+    const progress = Math.min(Math.max((v - 200) / 250, 0), 1); // 200 to 450
+    return progress;
+  });
+
   return (
     <section className="min-h-screen flex flex-col justify-center items-center w-full px-6 relative max-w-7xl mx-auto pt-20">
-      <div className="relative w-full overflow-hidden flex justify-center py-4">
+      
+      {/* Opaque Header Background */}
+      <motion.div 
+        className={cn(
+          "fixed top-0 left-0 w-full h-24 z-40 transition-colors",
+          isDepth ? "bg-black border-b border-zinc-800/50" : "bg-white border-b border-black/10"
+        )}
+        style={{ opacity: headerOpacity }}
+      />
+
+      <motion.div 
+        className="fixed inset-0 pointer-events-none flex justify-center items-center z-50"
+        style={{ y: yText, scale: scaleText }}
+      >
         <motion.h1 
-          className="font-sans text-6xl sm:text-8xl md:text-[10rem] lg:text-[11rem] font-bold tracking-wider leading-none text-center select-none opacity-90 text-primary"
-          initial={{ y: 100, opacity: 0, filter: 'blur(10px)' }}
-          animate={{ y: 0, opacity: 1, filter: 'blur(0px)' }}
-          transition={{ ...SPRING_CONFIG, delay: 0.1 }}
+          className="font-sans text-[12vw] sm:text-8xl md:text-[10rem] lg:text-[11rem] font-bold tracking-wider leading-none text-center select-none text-primary whitespace-nowrap"
+          initial={{ y: 100, opacity: 0, scale: 0.95 }}
+          animate={{ y: 0, opacity: 1, scale: 1 }}
+          transition={{ type: "spring", stiffness: 300, damping: 25, delay: 0.1 }}
         >
           HENRY IX
         </motion.h1>
-      </div>
+      </motion.div>
 
       <motion.div 
          initial={{ opacity: 0, y: 20 }}
          animate={{ opacity: 0.4, y: 0 }}
-         transition={{ ...SPRING_CONFIG, delay: 1 }}
+         transition={{ ...SPRING_CONFIG, delay: 1.5 }}
          whileHover={{ opacity: 1, y: 5 }}
-         className="absolute bottom-12 font-mono text-xs tracking-widest uppercase flex flex-col items-center gap-2 cursor-pointer"
+         className="absolute bottom-12 font-mono text-xs tracking-widest uppercase flex flex-col items-center gap-2 cursor-pointer z-10"
+         onClick={() => {
+           const vault = document.getElementById('vault');
+           if (vault) vault.scrollIntoView({ behavior: 'smooth' });
+         }}
       >
-        <span>Scroll to interface</span>
+        <span>Scroll to site</span>
         <motion.div 
-          animate={{ height: ["2rem", "3rem", "2rem"] }} 
+          animate={{ scaleY: [1, 1.5, 1] }} 
           transition={{ duration: 2, repeat: Infinity, ease: "anticipate" }}
-          className="flex justify-center items-start"
+          className="flex justify-center items-start origin-top h-8"
         >
           <div className={cn("w-[1px] h-full", isDepth ? "bg-zinc-500" : "bg-black")} />
         </motion.div>
@@ -233,10 +270,10 @@ function MixArchive({ isDepth }: { isDepth: boolean }) {
   }, [activeMix.id]);
 
   return (
-    <section id="vault" className="w-full relative py-32 px-6 max-w-7xl mx-auto overflow-hidden">
-      <div className="mb-16 flex items-center justify-between">
-        <h2 className="font-mono text-xl tracking-[0.2em] font-semibold uppercase ml-20 md:ml-28">Mix Archive</h2>
-        <div className={cn("h-[1px] flex-grow ml-8", isDepth ? "bg-zinc-800" : "bg-black/20")} />
+    <section id="vault" className="w-full relative py-32 px-6 max-w-7xl mx-auto overflow-hidden scroll-mt-24">
+      <div className="mb-16 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <h2 className="font-mono text-lg md:text-xl tracking-[0.2em] font-semibold uppercase">Mix Archive</h2>
+        <div className={cn("h-[1px] flex-grow w-full md:w-auto md:ml-8", isDepth ? "bg-zinc-800" : "bg-black/20")} />
       </div>
 
       <div 
@@ -323,18 +360,15 @@ function MixArchive({ isDepth }: { isDepth: boolean }) {
 }
 
 function Schedule({ isDepth }: { isDepth: boolean }) {
-  const gigs = [
-    { date: "12.11.2026", venue: "FABRIC", location: "LONDON, UK", status: "SOLD OUT" },
-    { date: "24.11.2026", venue: "BERGHAIN", location: "BERLIN, DE", status: "LIVE" },
-    { date: "05.12.2026", venue: "OUTPUT", location: "NYC, US", status: "UPCOMING" },
-    { date: "31.12.2026", venue: "UNKNOWN", location: "TOKYO, JP", status: "TBA" },
-  ];
+  const gigs: any[] = []; // Empty array simulates no upcoming events
+
+  if (!gigs || gigs.length === 0) return null;
 
   return (
-    <section id="schedule" className="w-full relative py-32 px-6 max-w-7xl mx-auto">
-      <div className="mb-16 flex items-center justify-between">
-        <h2 className="font-mono text-xl tracking-[0.2em] font-semibold uppercase">02 / Tour Node</h2>
-        <div className={cn("h-[1px] flex-grow ml-8", isDepth ? "bg-zinc-800" : "bg-black/20")} />
+    <section id="schedule" className="w-full relative py-32 px-6 max-w-7xl mx-auto scroll-mt-24">
+      <div className="mb-16 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <h2 className="font-mono text-lg md:text-xl tracking-[0.2em] font-semibold uppercase">02 / Tour Node</h2>
+        <div className={cn("h-[1px] flex-grow w-full md:w-auto md:ml-8", isDepth ? "bg-zinc-800" : "bg-black/20")} />
       </div>
 
       <div className="space-y-4">
@@ -378,21 +412,53 @@ function Schedule({ isDepth }: { isDepth: boolean }) {
   );
 }
 
-function EnterpriseNode({ isDepth }: { isDepth: boolean }) {
+function ContactForm({ isDepth }: { isDepth: boolean }) {
+  const [formData, setFormData] = useState({ name: '', agency: '', email: '', details: '' });
+  const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [errorMessage, setErrorMessage] = useState('');
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setStatus('loading');
+    setErrorMessage('');
+
+    try {
+      const res = await fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData)
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Failed to send message');
+      }
+
+      setStatus('success');
+      setFormData({ name: '', agency: '', email: '', details: '' });
+    } catch (err: any) {
+      setStatus('error');
+      setErrorMessage(err.message || 'Something went wrong');
+    }
+  };
+
   return (
-    <section id="booking" className="w-full relative py-32 px-6 max-w-7xl mx-auto flex flex-col items-center">
-      <div className="w-full mb-16 flex items-center justify-between">
-        <h2 className="font-mono text-xl tracking-[0.2em] font-semibold uppercase ml-20 md:ml-28">Contact Me</h2>
-        <div className={cn("h-[1px] flex-grow ml-8", isDepth ? "bg-zinc-800" : "bg-black/20")} />
+    <section id="booking" className="w-full relative py-32 px-6 max-w-7xl mx-auto flex flex-col items-center scroll-mt-24">
+      <div className="w-full mb-16 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <h2 className="font-mono text-lg md:text-xl tracking-[0.2em] font-semibold uppercase">Contact Me</h2>
+        <div className={cn("h-[1px] flex-grow w-full md:w-auto md:ml-8", isDepth ? "bg-zinc-800" : "bg-black/20")} />
       </div>
 
       <div className="w-full max-w-2xl">
-        <form className="space-y-8 block" onSubmit={(e) => e.preventDefault()}>
+        <form className="space-y-8 block" onSubmit={handleSubmit}>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <div className="space-y-3">
               <label className="font-mono text-xs tracking-widest opacity-60">REPRESENTATIVE NAME</label>
               <input 
                 type="text" 
+                required
+                value={formData.name}
+                onChange={e => setFormData({ ...formData, name: e.target.value })}
                 placeholder="NAME / AGENCY"
                 className={cn(
                    "w-full bg-transparent border-b py-2 font-mono text-xs focus:outline-none transition-colors",
@@ -404,6 +470,8 @@ function EnterpriseNode({ isDepth }: { isDepth: boolean }) {
               <label className="font-mono text-xs tracking-widest opacity-60">AGENCY / ENTITY</label>
               <input 
                 type="text" 
+                value={formData.agency}
+                onChange={e => setFormData({ ...formData, agency: e.target.value })}
                 placeholder="AGENCY / LLC"
                 className={cn(
                    "w-full bg-transparent border-b py-2 font-mono text-xs focus:outline-none transition-colors",
@@ -417,6 +485,9 @@ function EnterpriseNode({ isDepth }: { isDepth: boolean }) {
             <label className="font-mono text-xs tracking-widest opacity-60">COORDINATES (EMAIL)</label>
             <input 
               type="email" 
+              required
+              value={formData.email}
+              onChange={e => setFormData({ ...formData, email: e.target.value })}
               placeholder="EMAIL_ADDRESS"
               className={cn(
                  "w-full bg-transparent border-b py-2 font-mono text-xs focus:outline-none transition-colors",
@@ -429,6 +500,9 @@ function EnterpriseNode({ isDepth }: { isDepth: boolean }) {
             <label className="font-mono text-xs tracking-widest opacity-60">TRANSMISSION (DETAILS)</label>
             <textarea 
               rows={4}
+              required
+              value={formData.details}
+              onChange={e => setFormData({ ...formData, details: e.target.value })}
               placeholder="EVENT_SPECIFICATIONS"
               className={cn(
                  "w-full bg-transparent border-b py-2 font-mono text-xs focus:outline-none transition-colors resize-none",
@@ -437,15 +511,29 @@ function EnterpriseNode({ isDepth }: { isDepth: boolean }) {
             />
           </div>
 
+          {status === 'success' && (
+            <div className="text-green-500 font-mono text-xs tracking-widest">
+              MESSAGE TRANSMITTED SUCCESSFULLY.
+            </div>
+          )}
+          {status === 'error' && (
+            <div className="text-red-500 font-mono text-xs tracking-widest">
+              ERROR: {errorMessage}
+            </div>
+          )}
+
           <motion.button 
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
+            type="submit"
+            disabled={status === 'loading'}
+            whileHover={{ scale: status === 'loading' ? 1 : 1.02 }}
+            whileTap={{ scale: status === 'loading' ? 1 : 0.98 }}
             className={cn(
               "w-full py-4 px-8 mt-4 font-mono text-[10px] tracking-[0.2em] uppercase font-bold flex items-center justify-center gap-3 transition-colors",
-              isDepth ? "bg-zinc-100 text-black hover:bg-primary hover:text-white" : "bg-black text-white hover:bg-primary"
+              isDepth ? "bg-zinc-100 text-black hover:bg-primary hover:text-white disabled:opacity-50" : "bg-black text-white hover:bg-primary disabled:opacity-50"
             )}
           >
-            Transmit Signal <ArrowRight className="w-4 h-4" />
+            {status === 'loading' ? 'Transmitting...' : 'Send Message'} 
+            {status !== 'loading' && <ArrowRight className="w-4 h-4" />}
           </motion.button>
         </form>
       </div>
@@ -483,7 +571,7 @@ function MagneticIcon({ Icon, href, isDepth, name }: { Icon: any, href: string, 
       whileHover={{ scale: 1.15 }}
       transition={{ type: "spring", stiffness: 350, damping: 15, mass: 0.5 }}
       className={cn(
-        "p-3 rounded-lg transition-colors cursor-pointer border border-transparent flex items-center justify-center",
+        "p-3 rounded-full transition-colors cursor-pointer border border-transparent flex items-center justify-center",
         isDepth ? "hover:border-zinc-800 hover:bg-zinc-900/50 text-zinc-400 hover:text-zinc-100" : "hover:bg-black/5 text-zinc-600 hover:text-black hover:border-black/10"
       )}
     >
@@ -508,7 +596,7 @@ function SocialDock({ isDepth }: { isDepth: boolean }) {
       animate={{ y: 0, opacity: 1, x: "-50%" }}
       transition={{ ...SPRING_CONFIG, delay: 0.5 }}
       className={cn(
-        "fixed bottom-6 left-1/2 flex items-center gap-1 md:gap-2 p-2 border backdrop-blur-md z-40 overflow-x-auto max-w-[95vw] md:max-w-none scrollbar-hide",
+        "fixed bottom-6 left-1/2 flex items-center gap-1 md:gap-2 p-2 border backdrop-blur-md z-40 overflow-x-auto max-w-[95vw] md:max-w-none scrollbar-hide rounded-full",
         isDepth ? "border-zinc-800 bg-zinc-950/80" : "border-black/10 bg-white/40"
       )}
     >
@@ -536,12 +624,13 @@ export default function DJPortal() {
       
       <HeroNode isDepth={isDepth} />
       <MixArchive isDepth={isDepth} />
-      <EnterpriseNode isDepth={isDepth} />
+      <Schedule isDepth={isDepth} />
+      <ContactForm isDepth={isDepth} />
       
       <SocialDock isDepth={isDepth} />
 
       <div className="pb-32 w-full text-center font-mono text-[10px] tracking-widest opacity-40">
-        STRATOS ARCHITECTURE // VENTURE OS V1.0
+        HENRY IX
       </div>
     </motion.main>
   );
