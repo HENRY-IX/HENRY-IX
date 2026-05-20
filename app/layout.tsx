@@ -1,0 +1,28 @@
+import type {Metadata} from 'next';
+import { JetBrains_Mono } from 'next/font/google';
+import localFont from 'next/font/local';
+import './globals.css';
+
+const avathe = localFont({
+  src: './fonts/avathe.otf',
+  variable: '--font-sans',
+  adjustFontFallback: false,
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ['latin'],
+  variable: '--font-mono',
+});
+
+export const metadata: Metadata = {
+  title: 'Henry IX - DJ Portal',
+  description: 'Interactive DJ portfolio for Henry IX',
+};
+
+export default function RootLayout({children}: {children: React.ReactNode}) {
+  return (
+    <html lang="en" className={`${avathe.variable} ${jetbrainsMono.variable}`}>
+      <body suppressHydrationWarning>{children}</body>
+    </html>
+  );
+}
