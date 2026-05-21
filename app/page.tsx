@@ -15,11 +15,36 @@ const HOVER_SPRING = { type: "spring" as const, stiffness: 400, damping: 15 };
 
 function NavigationBar({ isDepth }: { isDepth: boolean }) {
   const [navHovered, setNavHovered] = useState(false);
+  const [activeSection, setActiveSection] = useState('');
+
+  useEffect(() => {
+    const sections = ['vault', 'schedule', 'booking'];
+    const observers: IntersectionObserver[] = [];
+
+    sections.forEach(id => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      const obs = new IntersectionObserver(
+        ([entry]) => { if (entry.isIntersecting) setActiveSection(id); },
+        { threshold: 0.3 }
+      );
+      obs.observe(el);
+      observers.push(obs);
+    });
+
+    return () => observers.forEach(o => o.disconnect());
+  }, []);
 
   const navClasses = cn(
     "fixed top-4 md:top-8 z-50 rounded-lg border overflow-hidden transition-colors duration-300",
     isDepth ? "border-zinc-800 bg-zinc-950 text-zinc-100" : "border-black bg-white text-zinc-900"
   );
+
+  const navLinks = [
+    { name: 'MIX ARCHIVE', icon: AudioLines, href: '#vault', sectionId: 'vault' },
+    { name: 'EVENTS', icon: Calendar, href: '#schedule', sectionId: 'schedule' },
+    { name: 'CONTACT ME', icon: Disc, href: '#booking', sectionId: 'booking' }
+  ];
 
   return (
     <>
@@ -46,23 +71,24 @@ function NavigationBar({ isDepth }: { isDepth: boolean }) {
               exit={{ opacity: 0, y: -10 }}
               className="mt-4 flex flex-col gap-2 w-full px-3 pb-3"
             >
-              {[
-                { name: 'MIX ARCHIVE', icon: AudioLines, href: '#vault' },
-                { name: 'EVENTS', icon: Calendar, href: '#schedule' },
-                { name: 'CONTACT ME', icon: Disc, href: '#booking' }
-              ].map((link, i) => (
+              {navLinks.map((link) => (
                 <motion.a
                   key={link.name}
                   href={link.href}
                   className={cn(
                      "flex items-center gap-3 px-3 py-2 rounded text-sm font-mono tracking-widest transition-colors",
-                     isDepth ? "hover:bg-zinc-900 hover:text-primary" : "hover:bg-black/5"
+                     activeSection === link.sectionId
+                       ? "text-primary bg-primary/10"
+                       : isDepth ? "hover:bg-zinc-900 hover:text-primary" : "hover:bg-black/5"
                   )}
                   whileHover={{ scale: 1.02, x: 5 }}
                   transition={HOVER_SPRING}
                 >
                   <link.icon className="w-4 h-4" />
                   {link.name}
+                  {activeSection === link.sectionId && (
+                    <span className="ml-auto w-1.5 h-1.5 rounded-full bg-primary" />
+                  )}
                 </motion.a>
               ))}
             </motion.div>
@@ -113,7 +139,7 @@ function HeroNode({ isDepth }: { isDepth: boolean }) {
         style={{ y: yText, scale: scaleText }}
       >
         <motion.h1 
-          className="font-sans text-[15vw] w-full font-bold tracking-wider leading-none text-center select-none text-primary whitespace-nowrap"
+          className="font-sans text-[clamp(2rem,15vw,15vw)] w-full font-bold tracking-wider leading-none text-center select-none text-primary whitespace-nowrap"
           initial={{ y: 100, opacity: 0, scale: 0.95 }}
           animate={{ y: 0, opacity: 1, scale: 1 }}
           transition={{ type: "spring", stiffness: 300, damping: 25, delay: 0.1 }}
@@ -127,7 +153,7 @@ function HeroNode({ isDepth }: { isDepth: boolean }) {
          animate={{ opacity: 0.4, y: 0 }}
          transition={{ ...SPRING_CONFIG, delay: 1.5 }}
          whileHover={{ opacity: 1, y: 5 }}
-         className="absolute bottom-16 font-mono text-xs tracking-widest uppercase flex flex-col items-center gap-2 cursor-pointer z-10"
+         className="absolute bottom-20 font-mono text-xs tracking-widest uppercase flex flex-col items-center gap-2 cursor-pointer z-10"
          onClick={() => {
            const vault = document.getElementById('vault');
            if (vault) vault.scrollIntoView({ behavior: 'smooth' });
@@ -275,7 +301,7 @@ function MixArchive({ isDepth }: { isDepth: boolean }) {
   return (
     <section id="vault" className="w-full relative py-32 px-6 max-w-7xl mx-auto overflow-hidden scroll-mt-24">
       <div className="mb-16 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-        <h2 className="font-mono text-lg md:text-xl tracking-[0.2em] font-semibold uppercase">Mix Archive</h2>
+        <h2 className="font-mono text-lg md:text-xl tracking-[0.2em] font-semibold uppercase">01 / Mix Archive</h2>
         <div className={cn("h-[1px] flex-grow w-full md:w-auto md:ml-8", isDepth ? "bg-zinc-800" : "bg-black/20")} />
       </div>
 
@@ -290,7 +316,8 @@ function MixArchive({ isDepth }: { isDepth: boolean }) {
         <AudioVisualizerBackground isDepth={isDepth} mouseX={mouseX} mouseY={mouseY} isPlaying={isPlaying} />
 
         {/* Mix Selector */}
-        <div className="w-full lg:w-1/3 z-10 flex flex-col gap-6 max-h-[450px] overflow-y-auto pr-2 pb-2 pl-2 -ml-2 scrollbar-hide">
+        <div className="w-full lg:w-1/3 z-10 flex flex-col gap-6 max-h-[450px] overflow-y-auto pr-2 pb-2 pl-2 -ml-2 scrollbar-hide relative">
+          <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-black/60 to-transparent z-10 rounded-b-lg" />
           {mixGroups.map((group, groupIdx) => (
             <div key={groupIdx} className="flex flex-col gap-3">
               <div className="font-mono text-xs opacity-50 tracking-widest uppercase mb-1 pl-2">{group.title}</div>
@@ -353,8 +380,10 @@ function MixArchive({ isDepth }: { isDepth: boolean }) {
             allow="autoplay; encrypted-media" 
             src={`https://w.soundcloud.com/player/?url=${encodeURIComponent(activeMix.url)}&color=%23d30f31&auto_play=false&hide_related=false&show_comments=true&show_user=true&show_reposts=false&show_teaser=true&visual=true`}
           />
-          <div style={{ fontSize: "10px", color: "#cccccc", lineBreak: "anywhere", wordBreak: "normal", overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis", fontFamily: "Interstate,Lucida Grande,Lucida Sans Unicode,Lucida Sans,Garuda,Verdana,Tahoma,sans-serif", fontWeight: 100, backgroundColor: "#000", padding: "4px" }}>
-            <a href="https://soundcloud.com/henryixdj" title="Henry IX" target="_blank" rel="noreferrer" style={{ color: "#cccccc", textDecoration: "none" }}>Henry IX</a> · <a href={activeMix.link} title={activeMix.title} target="_blank" rel="noreferrer" style={{ color: "#cccccc", textDecoration: "none" }}>{activeMix.title}</a>
+          <div className="text-[10px] text-zinc-600 font-mono bg-zinc-900 px-3 py-1.5 flex gap-1">
+            <a href="https://soundcloud.com/henryixdj" title="Henry IX" target="_blank" rel="noreferrer" className="text-zinc-500 hover:text-primary transition-colors">Henry IX</a>
+            <span className="text-zinc-700">·</span>
+            <a href={activeMix.link} title={activeMix.title} target="_blank" rel="noreferrer" className="text-zinc-500 hover:text-primary transition-colors truncate">{activeMix.title}</a>
           </div>
         </div>
       </div>
@@ -460,21 +489,65 @@ function MerchVault({ isDepth }: { isDepth: boolean }) {
 }
 
 function MailingList({ isDepth }: { isDepth: boolean }) {
+  const [email, setEmail] = useState('');
+  const [joined, setJoined] = useState(false);
+
+  const handleJoin = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email) return;
+    setJoined(true);
+  };
+
   return (
     <section className="w-full px-6 py-24 max-w-xl mx-auto flex flex-col items-center text-center">
       <h3 className="font-mono text-xl font-bold tracking-[0.2em] uppercase mb-4 text-primary">The Inner Circle</h3>
       <p className="text-sm text-zinc-400 mb-8 font-sans tracking-wide">Sign up for encrypted transmissions. Exclusive mixes, shows, and unreleased cuts only.</p>
       
-      <form className="w-full flex flex-col sm:flex-row gap-3" onSubmit={(e) => e.preventDefault()}>
-        <input 
-          type="email" 
-          placeholder="EMAIL ADDRESS" 
-          className="flex-grow bg-zinc-900/50 border border-zinc-800 rounded px-4 py-3 text-xs font-mono tracking-[0.2em] focus:outline-none focus:border-primary transition-colors text-white placeholder-zinc-600"
-        />
-        <button className="bg-primary text-black font-mono font-bold uppercase tracking-[0.2em] px-8 py-3 rounded hover:bg-white transition-colors text-xs">
-          Join
-        </button>
-      </form>
+      <AnimatePresence mode="wait">
+        {joined ? (
+          <motion.div
+            key="success"
+            initial={{ opacity: 0, y: 10, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0 }}
+            className="w-full flex flex-col items-center gap-3 py-6"
+          >
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ type: "spring", stiffness: 400, damping: 15 }}
+              className="w-12 h-12 rounded-full bg-primary flex items-center justify-center"
+            >
+              <svg className="w-6 h-6 text-black" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+              </svg>
+            </motion.div>
+            <p className="font-mono text-xs tracking-widest uppercase text-primary">Transmission Received</p>
+            <p className="text-xs text-zinc-500 font-mono">{email}</p>
+          </motion.div>
+        ) : (
+          <motion.form
+            key="form"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="w-full flex flex-col sm:flex-row gap-3"
+            onSubmit={handleJoin}
+          >
+            <input 
+              type="email"
+              required
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              placeholder="EMAIL ADDRESS" 
+              className="flex-grow bg-zinc-900/50 border border-zinc-800 rounded px-4 py-3 text-xs font-mono tracking-[0.2em] focus:outline-none focus:border-primary transition-colors text-white placeholder-zinc-600"
+            />
+            <button type="submit" className="bg-primary text-black font-mono font-bold uppercase tracking-[0.2em] px-8 py-3 rounded hover:bg-white transition-colors text-xs">
+              Join
+            </button>
+          </motion.form>
+        )}
+      </AnimatePresence>
     </section>
   );
 }
@@ -576,15 +649,19 @@ function ContactForm({ isDepth }: { isDepth: boolean }) {
           </div>
 
           <div className="space-y-3">
-            <label className="font-mono text-xs tracking-widest opacity-60">MESSAGE</label>
+            <div className="flex justify-between items-center">
+              <label className="font-mono text-xs tracking-widest opacity-60">MESSAGE</label>
+              <span className={cn("font-mono text-[10px] tabular-nums transition-colors", formData.details.length > 450 ? "text-primary" : "opacity-30")}>{formData.details.length}/500</span>
+            </div>
             <textarea 
-              rows={1}
+              rows={4}
               required
+              maxLength={500}
               value={formData.details}
               onChange={e => setFormData({ ...formData, details: e.target.value })}
               placeholder="EVENT_SPECIFICATIONS"
               className={cn(
-                 "w-full bg-transparent border-b py-2 font-mono text-xs focus:outline-none transition-colors resize-y",
+                 "w-full bg-transparent border-b py-2 font-mono text-xs focus:outline-none transition-colors resize-none",
                  isDepth ? "border-zinc-800 focus:border-primary" : "border-black/20 focus:border-primary"
               )}
             />
@@ -924,7 +1001,7 @@ export default function DJPortal() {
       
       <SocialDock isDepth={isDepth} />
 
-      <div className="pb-32 w-full text-center font-mono text-[10px] tracking-widest opacity-40">
+      <div className="pb-40 md:pb-32 w-full text-center font-mono text-[10px] tracking-widest opacity-40">
         HENRY IX
       </div>
     </motion.main>
