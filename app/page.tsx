@@ -101,10 +101,12 @@ function HeroNode({ isDepth }: { isDepth: boolean }) {
       <motion.div 
         className={cn(
           "fixed top-0 left-0 w-full h-24 z-40 transition-colors",
-          isDepth ? "bg-black border-b border-zinc-800/50" : "bg-white border-b border-black/10"
+          isDepth ? "bg-black/50 border-b border-zinc-800/50" : "bg-white/50 border-b border-black/10"
         )}
         style={{ opacity: headerOpacity }}
       />
+      
+      <AbstractLighting />
 
       <motion.div 
         className="fixed inset-0 pointer-events-none flex justify-center items-center z-50"
@@ -429,6 +431,54 @@ function Schedule({ isDepth }: { isDepth: boolean }) {
   );
 }
 
+function MerchVault({ isDepth }: { isDepth: boolean }) {
+  return (
+    <section id="merch" className="min-h-[50vh] flex flex-col justify-center items-center w-full px-6 relative max-w-7xl mx-auto py-24 scroll-mt-24">
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: "-50px" }}
+        transition={{ ...SPRING_CONFIG }}
+        className="w-full mb-16 flex flex-col md:flex-row items-start md:items-center justify-between gap-4"
+      >
+        <h2 className="font-mono text-lg md:text-xl tracking-[0.2em] font-semibold uppercase">03 / Artifacts & Merch</h2>
+        <div className={cn("h-[1px] flex-grow w-full md:w-auto md:ml-8", isDepth ? "bg-zinc-800" : "bg-black/20")} />
+      </motion.div>
+
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: "-50px" }}
+        className="w-full h-64 border border-dashed border-zinc-800 rounded-lg flex flex-col items-center justify-center gap-4 text-zinc-600 bg-zinc-950/30"
+      >
+        <Cloud className="w-10 h-10 opacity-50" />
+        <span className="font-mono text-xs tracking-widest uppercase text-primary">Vault Sealed</span>
+        <span className="text-sm font-sans tracking-wide">Physical editions arriving late 2026</span>
+      </motion.div>
+    </section>
+  );
+}
+
+function MailingList({ isDepth }: { isDepth: boolean }) {
+  return (
+    <section className="w-full px-6 py-24 max-w-xl mx-auto flex flex-col items-center text-center">
+      <h3 className="font-mono text-xl font-bold tracking-[0.2em] uppercase mb-4 text-primary">The Inner Circle</h3>
+      <p className="text-sm text-zinc-400 mb-8 font-sans tracking-wide">Sign up for encrypted transmissions. Exclusive mixes, shows, and unreleased cuts only.</p>
+      
+      <form className="w-full flex flex-col sm:flex-row gap-3" onSubmit={(e) => e.preventDefault()}>
+        <input 
+          type="email" 
+          placeholder="EMAIL ADDRESS" 
+          className="flex-grow bg-zinc-900/50 border border-zinc-800 rounded px-4 py-3 text-xs font-mono tracking-[0.2em] focus:outline-none focus:border-primary transition-colors text-white placeholder-zinc-600"
+        />
+        <button className="bg-primary text-black font-mono font-bold uppercase tracking-[0.2em] px-8 py-3 rounded hover:bg-white transition-colors text-xs">
+          Join
+        </button>
+      </form>
+    </section>
+  );
+}
+
 function ContactForm({ isDepth }: { isDepth: boolean }) {
   const [formData, setFormData] = useState({ name: '', agency: '', email: '', details: '' });
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
@@ -468,7 +518,7 @@ function ContactForm({ isDepth }: { isDepth: boolean }) {
         transition={{ ...SPRING_CONFIG }}
         className="w-full mb-16 flex flex-col md:flex-row items-start md:items-center justify-between gap-4"
       >
-        <h2 className="font-mono text-lg md:text-xl tracking-[0.2em] font-semibold uppercase">Contact Me</h2>
+        <h2 className="font-mono text-lg md:text-xl tracking-[0.2em] font-semibold uppercase">04 / Transmission</h2>
         <div className={cn("h-[1px] flex-grow w-full md:w-auto md:ml-8", isDepth ? "bg-zinc-800" : "bg-black/20")} />
       </motion.div>
 
@@ -551,19 +601,34 @@ function ContactForm({ isDepth }: { isDepth: boolean }) {
             </div>
           )}
 
-          <motion.button 
-            type="submit"
-            disabled={status === 'loading'}
-            whileHover={{ scale: status === 'loading' ? 1 : 1.02 }}
-            whileTap={{ scale: status === 'loading' ? 1 : 0.98 }}
-            className={cn(
-              "w-full py-4 px-8 mt-4 font-mono text-[10px] tracking-[0.2em] uppercase font-bold flex items-center justify-center gap-3 transition-colors",
-              isDepth ? "bg-zinc-100 text-black hover:bg-primary hover:text-white disabled:opacity-50" : "bg-black text-white hover:bg-primary disabled:opacity-50"
-            )}
-          >
-            {status === 'loading' ? 'Transmitting...' : 'Send Message'} 
-            {status !== 'loading' && <ArrowRight className="w-4 h-4" />}
-          </motion.button>
+          <div className="flex flex-col sm:flex-row gap-4 w-full mt-4">
+            <motion.a 
+              href="/Henry_IX_EPK.pdf"
+              download
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              className={cn(
+                "w-full sm:w-1/2 py-4 px-8 font-mono text-[10px] tracking-[0.2em] uppercase font-bold flex items-center justify-center gap-3 transition-colors border border-zinc-800",
+                isDepth ? "bg-transparent text-white hover:border-primary hover:text-primary" : "bg-transparent text-black border-black/20 hover:border-primary"
+              )}
+            >
+              Download EPK
+            </motion.a>
+
+            <motion.button 
+              type="submit"
+              disabled={status === 'loading'}
+              whileHover={{ scale: status === 'loading' ? 1 : 1.02 }}
+              whileTap={{ scale: status === 'loading' ? 1 : 0.98 }}
+              className={cn(
+                "w-full sm:w-1/2 py-4 px-8 font-mono text-[10px] tracking-[0.2em] uppercase font-bold flex items-center justify-center gap-3 transition-colors",
+                isDepth ? "bg-zinc-100 text-black hover:bg-primary hover:text-white disabled:opacity-50" : "bg-black text-white hover:bg-primary disabled:opacity-50"
+              )}
+            >
+              {status === 'loading' ? 'Transmitting...' : 'Send Message'} 
+              {status !== 'loading' && <ArrowRight className="w-4 h-4" />}
+            </motion.button>
+          </div>
         </form>
       </motion.div>
     </section>
@@ -635,7 +700,128 @@ function SocialDock({ isDepth }: { isDepth: boolean }) {
     </motion.div>
   );
 }
+function AbstractLighting() {
+  return (
+    <div className="fixed inset-0 pointer-events-none overflow-hidden z-0 bg-black">
+      <motion.div
+        animate={{
+          scale: [1, 1.2, 1],
+          opacity: [0.3, 0.5, 0.3],
+          x: ['-20%', '20%', '-20%'],
+          y: ['-20%', '20%', '-20%'],
+        }}
+        transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
+        className="absolute top-1/4 left-1/4 w-[50vw] h-[50vw] bg-primary/20 rounded-full blur-[100px] mix-blend-screen"
+      />
+      <motion.div
+        animate={{
+          scale: [1, 1.5, 1],
+          opacity: [0.2, 0.4, 0.2],
+          x: ['20%', '-20%', '20%'],
+          y: ['20%', '-20%', '20%'],
+        }}
+        transition={{ duration: 15, repeat: Infinity, ease: "easeInOut" }}
+        className="absolute bottom-1/4 right-1/4 w-[40vw] h-[40vw] bg-red-900/30 rounded-full blur-[120px] mix-blend-screen"
+      />
+    </div>
+  );
+}
 
+function GlobalAudioPlayer() {
+  const [isPlaying, setIsPlaying] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  useEffect(() => {
+    // Placeholder audio for the prototype
+    audioRef.current = new Audio('https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3');
+    audioRef.current.loop = true;
+    audioRef.current.volume = 0.5;
+  }, []);
+
+  const togglePlay = () => {
+    if (isPlaying) {
+      audioRef.current?.pause();
+    } else {
+      audioRef.current?.play().catch(e => console.log('Audio play failed:', e));
+    }
+    setIsPlaying(!isPlaying);
+  };
+
+  return (
+    <motion.div 
+      initial={{ opacity: 0, y: 50 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="fixed bottom-6 right-6 z-[60] flex items-center gap-3 bg-zinc-900/90 backdrop-blur border border-zinc-800 p-2 pr-4 rounded-full text-white cursor-pointer hover:bg-zinc-800 transition-colors"
+      onClick={togglePlay}
+    >
+      <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center">
+        {isPlaying ? <Pause className="w-5 h-5 text-black" fill="currentColor" /> : <Play className="w-5 h-5 text-black ml-1" fill="currentColor" />}
+      </div>
+      <div className="flex flex-col">
+        <span className="text-[10px] text-zinc-400 font-mono uppercase tracking-widest leading-tight">Now Playing</span>
+        <span className="text-xs font-semibold tracking-wide">Henry IX - Live at The Vault</span>
+      </div>
+      {isPlaying && (
+        <div className="flex gap-0.5 items-end h-4 ml-2">
+           {[1,2,3].map(i => (
+             <motion.div 
+               key={i}
+               className="w-1 bg-primary"
+               animate={{ height: ['20%', '100%', '20%'] }}
+               transition={{ duration: 0.5 + (i * 0.1), repeat: Infinity, ease: 'easeInOut' }}
+             />
+           ))}
+        </div>
+      )}
+    </motion.div>
+  );
+}
+
+function DynamicCursor() {
+  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+  const [isHovering, setIsHovering] = useState(false);
+
+  useEffect(() => {
+    const updateMousePosition = (e: MouseEvent) => {
+      setMousePosition({ x: e.clientX, y: e.clientY });
+    };
+    
+    const handleMouseOver = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (window.getComputedStyle(target).cursor === 'pointer' || target.tagName.toLowerCase() === 'a' || target.tagName.toLowerCase() === 'button') {
+        setIsHovering(true);
+      } else {
+        setIsHovering(false);
+      }
+    };
+
+    window.addEventListener('mousemove', updateMousePosition);
+    window.addEventListener('mouseover', handleMouseOver);
+
+    return () => {
+      window.removeEventListener('mousemove', updateMousePosition);
+      window.removeEventListener('mouseover', handleMouseOver);
+    };
+  }, []);
+
+  return (
+    <motion.div
+      className="fixed top-0 left-0 w-8 h-8 rounded-full border-2 border-primary pointer-events-none z-[9999] mix-blend-difference hidden md:block"
+      animate={{
+        x: mousePosition.x - 16,
+        y: mousePosition.y - 16,
+        scale: isHovering ? 1.5 : 1,
+        backgroundColor: isHovering ? 'rgba(216, 22, 63, 0.2)' : 'transparent',
+      }}
+      transition={{ type: "spring", stiffness: 500, damping: 28, mass: 0.5 }}
+    >
+      <motion.div 
+        className="w-1 h-1 bg-primary rounded-full absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
+        animate={{ scale: isHovering ? 0 : 1 }}
+      />
+    </motion.div>
+  );
+}
 function Preloader() {
   const [loading, setLoading] = useState(true);
 
@@ -688,12 +874,16 @@ export default function DJPortal() {
       className="min-h-screen w-full relative overflow-x-hidden selection:bg-primary/30"
     >
       <Preloader />
+      <DynamicCursor />
+      <GlobalAudioPlayer />
       <NavigationBar isDepth={isDepth} />
       
       <HeroNode isDepth={isDepth} />
       <MixArchive isDepth={isDepth} />
       <Schedule isDepth={isDepth} />
+      <MerchVault isDepth={isDepth} />
       <ContactForm isDepth={isDepth} />
+      <MailingList isDepth={isDepth} />
       
       <SocialDock isDepth={isDepth} />
 
