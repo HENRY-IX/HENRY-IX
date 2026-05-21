@@ -41,6 +41,7 @@ function NavigationBar({ isDepth }: { isDepth: boolean }) {
   );
 
   const navLinks = [
+    { name: 'MIX ARCHIVE', icon: AudioLines, href: '#vault', sectionId: 'vault' },
     { name: 'EVENTS', icon: Calendar, href: '#schedule', sectionId: 'schedule' },
     { name: 'CONTACT ME', icon: Disc, href: '#booking', sectionId: 'booking' }
   ];
@@ -992,6 +993,7 @@ export default function DJPortal() {
       <NavigationBar isDepth={isDepth} />
       
       <HeroNode isDepth={isDepth} />
+      <MixArchive isDepth={isDepth} />
       <Schedule isDepth={isDepth} />
       <ContactForm isDepth={isDepth} />
       <MailingList isDepth={isDepth} />
