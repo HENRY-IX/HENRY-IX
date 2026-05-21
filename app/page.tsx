@@ -362,8 +362,6 @@ function MixArchive({ isDepth }: { isDepth: boolean }) {
 function Schedule({ isDepth }: { isDepth: boolean }) {
   const gigs: any[] = []; // Empty array simulates no upcoming events
 
-  if (!gigs || gigs.length === 0) return null;
-
   return (
     <section id="schedule" className="w-full relative py-32 px-6 max-w-7xl mx-auto scroll-mt-24">
       <div className="mb-16 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
@@ -372,7 +370,12 @@ function Schedule({ isDepth }: { isDepth: boolean }) {
       </div>
 
       <div className="space-y-4">
-        {gigs.map((gig, i) => (
+        {(!gigs || gigs.length === 0) ? (
+          <div className="w-full flex justify-center py-12 border-b border-dashed transition-colors border-zinc-800/50">
+             <span className="font-mono text-sm tracking-widest opacity-50 uppercase">No upcoming shows</span>
+          </div>
+        ) : (
+          gigs.map((gig, i) => (
            <motion.div 
              key={i}
              initial={{ opacity: 0, y: 20 }}
@@ -406,7 +409,8 @@ function Schedule({ isDepth }: { isDepth: boolean }) {
                 </span>
               </div>
            </motion.div>
-        ))}
+          ))
+        )}
       </div>
     </section>
   );
@@ -482,7 +486,7 @@ function ContactForm({ isDepth }: { isDepth: boolean }) {
           </div>
           
           <div className="space-y-3">
-            <label className="font-mono text-xs tracking-widest opacity-60">COORDINATES (EMAIL)</label>
+            <label className="font-mono text-xs tracking-widest opacity-60">EMAIL ADDRESS</label>
             <input 
               type="email" 
               required
@@ -497,7 +501,7 @@ function ContactForm({ isDepth }: { isDepth: boolean }) {
           </div>
 
           <div className="space-y-3">
-            <label className="font-mono text-xs tracking-widest opacity-60">TRANSMISSION (DETAILS)</label>
+            <label className="font-mono text-xs tracking-widest opacity-60">MESSAGE</label>
             <textarea 
               rows={1}
               required
