@@ -778,12 +778,19 @@ function GlobalAudioPlayer() {
 }
 
 function DynamicCursor() {
-  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+  const cursorX = useMotionValue(-100);
+  const cursorY = useMotionValue(-100);
+  
+  const springConfig = { damping: 25, stiffness: 700, mass: 0.5 };
+  const cursorXSpring = useSpring(cursorX, springConfig);
+  const cursorYSpring = useSpring(cursorY, springConfig);
+  
   const [isHovering, setIsHovering] = useState(false);
 
   useEffect(() => {
-    const updateMousePosition = (e: MouseEvent) => {
-      setMousePosition({ x: e.clientX, y: e.clientY });
+    const moveCursor = (e: MouseEvent) => {
+      cursorX.set(e.clientX - 16);
+      cursorY.set(e.clientY - 16);
     };
     
     const handleMouseOver = (e: MouseEvent) => {
@@ -795,25 +802,27 @@ function DynamicCursor() {
       }
     };
 
-    window.addEventListener('mousemove', updateMousePosition);
+    window.addEventListener('mousemove', moveCursor);
     window.addEventListener('mouseover', handleMouseOver);
 
     return () => {
-      window.removeEventListener('mousemove', updateMousePosition);
+      window.removeEventListener('mousemove', moveCursor);
       window.removeEventListener('mouseover', handleMouseOver);
     };
-  }, []);
+  }, [cursorX, cursorY]);
 
   return (
     <motion.div
       className="fixed top-0 left-0 w-8 h-8 rounded-full border-2 border-primary pointer-events-none z-[9999] mix-blend-difference hidden md:block"
+      style={{
+        x: cursorXSpring,
+        y: cursorYSpring,
+      }}
       animate={{
-        x: mousePosition.x - 16,
-        y: mousePosition.y - 16,
         scale: isHovering ? 1.5 : 1,
         backgroundColor: isHovering ? 'rgba(216, 22, 63, 0.2)' : 'transparent',
       }}
-      transition={{ type: "spring", stiffness: 500, damping: 28, mass: 0.5 }}
+      transition={{ type: "spring", stiffness: 500, damping: 28 }}
     >
       <motion.div 
         className="w-1 h-1 bg-primary rounded-full absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
