@@ -40,6 +40,9 @@ export default function AudioVisualizerBackground({
     const canvas = canvasRef.current;
     if (!canvas) return;
 
+    // If we've already initialized either path, don't try again
+    if (offscreenInitialisedRef.current || fallbackRef.current) return;
+
     const supportsOffscreen = typeof canvas.transferControlToOffscreen === 'function';
 
     if (supportsOffscreen && typeof Worker !== 'undefined') {
@@ -101,16 +104,18 @@ export default function AudioVisualizerBackground({
           worker.terminate();
           workerRef.current = null;
         };
-      } catch {
-        // If transferControlToOffscreen fails (e.g. canvas already controlled), fall through
+      } catch (e) {
+        // If transferControlToOffscreen fails, fall through to fallback
+        console.warn('OffscreenCanvas setup failed, falling back:', e);
+        offscreenInitialisedRef.current = false;
         fallbackRef.current = true;
       }
     } else {
       fallbackRef.current = true;
     }
 
-    // ── Fallback: classic main-thread canvas ───────────────────────────
-    if (fallbackRef.current) {
+    // Only run fallback if OffscreenCanvas initialization failed
+    if (fallbackRef.current && !offscreenInitialisedRef.current) {
       const ctx2d = canvas.getContext('2d');
       if (!ctx2d) return;
 
@@ -212,8 +217,7 @@ export default function AudioVisualizerBackground({
         cancelAnimationFrame(rafRef.current);
       };
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [analyser]); // Only re-run if analyser node changes (not on every isPlaying/mouseX change)
+  }, [analyser]);
 
   // ── Sync isPlaying / mouse / isDepth changes to OffscreenCanvas worker ─
   useEffect(() => {

@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils';
 
 // --- MODULAR IMPORTS ---
 import { playClick } from '@/lib/audioUtils';
+import { audioEngine } from '@/lib/AudioEngine';
 import { SynthesizerKnob, RotaryKnob, SplitFlapText, LEDEqualizer } from '@/components/DJComponents';
 import AudioVisualizerBackground from './AudioVisualizerBackground';
 import { useAudio } from './AudioProvider';
@@ -616,6 +617,7 @@ function MixArchive({
   setRightActiveDeck,
   playTrack,
   playLockoutBlip,
+  togglePlayGlobal,
   widgetRefs,
   initAudioDSP,
   loadLocalFile,
@@ -637,6 +639,7 @@ function MixArchive({
   setRightActiveDeck: (val: 3 | 4) => void;
   playTrack: (track: any, targetDeckId?: number) => void; 
   playLockoutBlip: () => void;
+  togglePlayGlobal: (deckId: number) => void;
   widgetRefs: React.MutableRefObject<Record<number, any>>;
   initAudioDSP: () => AudioContext | null;
   loadLocalFile?: (deckId: number, file: File) => void;
@@ -1838,6 +1841,9 @@ function MixArchive({
                     value={deck.eqHi}
                     size="lg"
                     onChange={(val) => {
+                      // 1. Instant audio DSP update (zero latency)
+                      audioEngine.setEQ(id, 'high', val);
+                      // 2. Update Zustand for UI display
                       setDecks((prev: any) => ({
                         ...prev,
                         [id]: { ...prev[id], eqHi: val }
@@ -1850,6 +1856,9 @@ function MixArchive({
                     value={deck.eqMid}
                     size="lg"
                     onChange={(val) => {
+                      // 1. Instant audio DSP update (zero latency)
+                      audioEngine.setEQ(id, 'mid', val);
+                      // 2. Update Zustand for UI display
                       setDecks((prev: any) => ({
                         ...prev,
                         [id]: { ...prev[id], eqMid: val }
@@ -1862,6 +1871,9 @@ function MixArchive({
                     value={deck.eqLow}
                     size="lg"
                     onChange={(val) => {
+                      // 1. Instant audio DSP update (zero latency)
+                      audioEngine.setEQ(id, 'low', val);
+                      // 2. Update Zustand for UI display
                       setDecks((prev: any) => ({
                         ...prev,
                         [id]: { ...prev[id], eqLow: val }
@@ -1874,6 +1886,9 @@ function MixArchive({
                     value={deck.filter}
                     size="lg"
                     onChange={(val) => {
+                      // 1. Instant audio DSP update (zero latency)
+                      audioEngine.setFilter(id, val);
+                      // 2. Update Zustand for UI display
                       setDecks((prev: any) => ({
                         ...prev,
                         [id]: { ...prev[id], filter: val }
@@ -2054,13 +2069,11 @@ function MixArchive({
                   {/* Detached Play Button */}
                   <div 
                     onClick={() => {
-                      if (isPlaying) {
-                        setDecks((prev: any) => {
-                           const next = {...prev};
-                           playingOnDecks.forEach(id => next[id].isPlaying = false);
-                           return next;
-                        });
+                      if (isPlaying && playingOnDecks.length > 0) {
+                        // Use proper toggle function to pause
+                        playingOnDecks.forEach(id => togglePlayGlobal(id));
                       } else {
+                        // Play track on the left active deck
                         playTrack(track, leftActiveDeck);
                       }
                       playClick(1000, 'sine', 0.04);
@@ -2187,7 +2200,7 @@ export default function CDJPortal({ isDepth = true, activeView: initialActiveVie
 
   // Non-reactive engine refs + imperative functions from context
   const {
-    playTrack, playLockoutBlip,
+    playTrack, playLockoutBlip, togglePlayGlobal,
     widgetRefs, initAudioDSP, loadLocalFile, seekLocalBuffer,
     audioElementsRef, playPendingRef, scratchingRef
   } = useAudio();
@@ -2207,6 +2220,7 @@ export default function CDJPortal({ isDepth = true, activeView: initialActiveVie
       setRightActiveDeck={setRightActiveDeck}
       playTrack={playTrack}
       playLockoutBlip={playLockoutBlip}
+      togglePlayGlobal={togglePlayGlobal}
       widgetRefs={widgetRefs}
       initAudioDSP={initAudioDSP}
       loadLocalFile={loadLocalFile}
