@@ -835,8 +835,8 @@ function GlobalAudioPlayer() {
           
           <div className="overflow-hidden relative w-full">
             <motion.div
-              animate={isHovered ? { x: ["0%", "-50%"] } : { x: "0%" }}
-              transition={{ repeat: Infinity, duration: 6, ease: "linear" }}
+              animate={isHovered ? { x: ["0%", "0%", "-50%", "-50%"] } : { x: "0%" }}
+              transition={{ repeat: Infinity, duration: 6, times: [0, 0.3, 0.99, 1], ease: "linear" }}
               className="text-xs font-semibold tracking-wide flex gap-4 w-max"
             >
               <span>Knight Club: Session 1</span>
