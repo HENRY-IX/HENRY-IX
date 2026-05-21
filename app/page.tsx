@@ -807,26 +807,29 @@ function GlobalAudioPlayer() {
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
       >
-        <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center shrink-0 z-10">
-          {!isReady ? (
-            <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin" />
-          ) : isPlaying ? (
-            <Pause className="w-5 h-5 text-black" fill="currentColor" />
-          ) : (
-            <Play className="w-5 h-5 text-black ml-1" fill="currentColor" />
-          )}
-        </div>
-        
+        {isPlaying && (
+          <div className="flex gap-0.5 items-end h-4 pl-4 shrink-0 z-10">
+             {[1,2,3].map(i => (
+               <motion.div 
+                 key={i}
+                 className="w-1 bg-primary"
+                 animate={{ height: ['20%', '100%', '20%'] }}
+                 transition={{ duration: 0.5 + (i * 0.1), repeat: Infinity, ease: 'easeInOut' }}
+               />
+             ))}
+          </div>
+        )}
+
         <motion.div 
           initial={{ width: 0, opacity: 0 }}
           animate={{ 
             width: isHovered ? 140 : 0, 
             opacity: isHovered ? 1 : 0,
-            marginLeft: isHovered ? 12 : 0,
-            marginRight: isHovered ? (isPlaying ? 12 : 16) : 0
+            marginLeft: isHovered ? (isPlaying ? 12 : 16) : 0,
+            marginRight: isHovered ? 12 : 0
           }}
           transition={{ type: "spring", stiffness: 400, damping: 30 }}
-          className="flex flex-col overflow-hidden whitespace-nowrap"
+          className="flex flex-col overflow-hidden whitespace-nowrap text-right"
         >
           <span className="text-[10px] text-zinc-400 font-mono uppercase tracking-widest leading-tight">Now Playing</span>
           
@@ -842,18 +845,15 @@ function GlobalAudioPlayer() {
           </div>
         </motion.div>
 
-        {isPlaying && (
-          <div className="flex gap-0.5 items-end h-4 pr-3 shrink-0 z-10 ml-2">
-             {[1,2,3].map(i => (
-               <motion.div 
-                 key={i}
-                 className="w-1 bg-primary"
-                 animate={{ height: ['20%', '100%', '20%'] }}
-                 transition={{ duration: 0.5 + (i * 0.1), repeat: Infinity, ease: 'easeInOut' }}
-               />
-             ))}
-          </div>
-        )}
+        <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center shrink-0 z-10">
+          {!isReady ? (
+            <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin" />
+          ) : isPlaying ? (
+            <Pause className="w-5 h-5 text-black" fill="currentColor" />
+          ) : (
+            <Play className="w-5 h-5 text-black ml-1" fill="currentColor" />
+          )}
+        </div>
       </motion.div>
     </>
   );
