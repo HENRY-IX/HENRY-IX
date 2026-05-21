@@ -151,7 +151,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
         if (typeof window !== 'undefined') {
           const audio = new Audio();
           audio.crossOrigin = 'anonymous';
-          audio.loop = true;
+          audio.loop = false;
           audio.preload = 'metadata';
 
           // Don't preload default URLs (they don't exist); only load when user selects a track
@@ -164,6 +164,27 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
           // Load metadata when available
           audio.addEventListener('loadedmetadata', () => {
             setDeck(deckId, { duration: audio.duration, isReady: true });
+          });
+
+          // Keep Zustand in sync with the native audio element state.
+          audio.addEventListener('play', () => {
+            setDeck(deckId, { isPlaying: true });
+          });
+          audio.addEventListener('pause', () => {
+            setDeck(deckId, { isPlaying: false });
+          });
+          audio.addEventListener('ended', () => {
+            setDeck(deckId, { isPlaying: false, progress: 0 });
+          });
+
+          // Update progress from audio element (throttled to avoid excessive state updates)
+          let lastProgressUpdate = 0;
+          audio.addEventListener('timeupdate', () => {
+            const now = performance.now();
+            if (now - lastProgressUpdate >= 100) {
+              lastProgressUpdate = now;
+              setDeck(deckId, { progress: audio.currentTime });
+            }
           });
 
           // Gracefully handle load errors (e.g., file not found, unsupported format)
@@ -315,65 +336,6 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     return () => cancelAnimationFrame(frameId);
   }, []);
 
-  // ── HTML5 audio sync effect ─────────────────────────────────────────────
-  // Optimized: Subscribe only to specific deck properties that affect playback,
-  // NOT the entire decks object. This prevents re-renders on every property change.
-  useEffect(() => {
-    const unsubscribe = useAudioStore.subscribe(
-      state => [
-        state.decks[1]?.url, state.decks[1]?.isPlaying, state.decks[1]?.pitch, state.decks[1]?.scMode,
-        state.decks[2]?.url, state.decks[2]?.isPlaying, state.decks[2]?.pitch, state.decks[2]?.scMode,
-        state.decks[3]?.url, state.decks[3]?.isPlaying, state.decks[3]?.pitch, state.decks[3]?.scMode,
-        state.decks[4]?.url, state.decks[4]?.isPlaying, state.decks[4]?.pitch, state.decks[4]?.scMode,
-      ],
-      () => {
-        const state = useAudioStore.getState();
-        [1, 2, 3, 4].forEach(deckId => {
-          const deck = state.decks[deckId];
-          if (!deck) return;
-
-          const audio = audioElementsRef.current[deckId];
-          if (!deck.scMode && audio) {
-            if (deck.url) {
-              if (loadedUrlsRef.current[deckId] !== deck.url) {
-                loadedUrlsRef.current[deckId] = deck.url;
-                const absoluteUrl = deck.url.startsWith('blob:') || deck.url.startsWith('http')
-                  ? deck.url
-                  : new URL(deck.url, window.location.origin).href;
-                audio.src = absoluteUrl;
-                audio.load();
-              }
-            }
-
-            if (deck.isPlaying) {
-              const ctx = audioContextRef.current;
-              if (ctx && ctx.state === 'suspended') ctx.resume();
-              if (audio.paused && audio.src && !playPendingRef.current[deckId] && !scratchingRef.current[deckId]) {
-                playPendingRef.current[deckId] = true;
-                audio.play()
-                  .then(() => { playPendingRef.current[deckId] = false; })
-                  .catch(err => {
-                    playPendingRef.current[deckId] = false;
-                    console.warn('HTML5 audio playback failed:', err);
-                  });
-              }
-            } else {
-              if (!audio.paused) audio.pause();
-            }
-
-            const targetRate = 1 + (deck.pitch || 0) / 100;
-            if (Math.abs(audio.playbackRate - targetRate) > 0.005) {
-              audio.playbackRate = targetRate;
-            }
-          } else if (deck.scMode && audio) {
-            if (!audio.paused) audio.pause();
-          }
-        });
-      }
-    );
-    return unsubscribe;
-  }, []);
-
   // ── Selective EQ / Filter / Gain DSP sync (OPTIMIZED) ────────────────────
   // This effect now only runs when actual DSP parameters change (EQ, filter, volume, crossfader).
   // We use specific selectors instead of subscribing to the entire decks object.
@@ -435,13 +397,14 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
               .then(() => { playPendingRef.current[deckId] = false; })
               .catch(err => {
                 playPendingRef.current[deckId] = false;
-                if (err.name !== 'AbortError') setDeck(deckId, { isPlaying: false });
+                if (err.name !== 'AbortError') {
+                  setDeck(deckId, { isPlaying: false });
+                }
               });
           } else {
             audio.pause();
           }
         }
-        setDeck(deckId, { isPlaying: targetPlaying });
       }
     };
     return () => { delete (window as any).togglePlayGlobal; };
@@ -500,52 +463,46 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     const deck = state.decks[deckId];
     if (!deck) return;
     playClick(1000, 'sine', 0.03);
-    const targetPlaying = !deck.isPlaying;
     const ctx = initAudioDSP();
     if (ctx && ctx.state === 'suspended') ctx.resume().catch(() => {});
+
     const widget = widgetRefs.current[deckId];
-    
     if (deck.scMode && widget) {
-      try { targetPlaying ? widget.play() : widget.pause(); } catch (e) {
-        setDeck(deckId, { isPlaying: targetPlaying });
+      try {
+        deck.isPlaying ? widget.pause() : widget.play();
+      } catch (e) {
+        console.warn(`SoundCloud toggle failed on deck ${deckId}:`, e);
+        setDeck(deckId, { isPlaying: !deck.isPlaying });
       }
-    } else if (!deck.scMode) {
-      // For local files, handle play with proper error handling
-      if (targetPlaying) {
-        const audio = audioElementsRef.current[deckId];
-        if (audio && audio.src) {
-          // Only try to play if audio has a source
-          if (audio.readyState >= 2) {
-            // Audio is ready, play immediately
-            playPendingRef.current[deckId] = true;
-            audio.play()
-              .then(() => { playPendingRef.current[deckId] = false; })
-              .catch(err => {
-                playPendingRef.current[deckId] = false;
-                if (err.name !== 'AbortError') {
-                  console.warn(`Play toggle failed on deck ${deckId}:`, err.message);
-                  setDeck(deckId, { isPlaying: false });
-                }
-              });
-          } else {
-            // Audio not ready yet, wait for canplay
-            const playWhenReady = () => {
-              playPendingRef.current[deckId] = true;
-              audio.play()
-                .then(() => { playPendingRef.current[deckId] = false; })
-                .catch(err => {
-                  playPendingRef.current[deckId] = false;
-                  if (err.name !== 'AbortError') setDeck(deckId, { isPlaying: false });
-                });
-              audio.removeEventListener('canplay', playWhenReady);
-            };
-            audio.addEventListener('canplay', playWhenReady, { once: true });
+      return;
+    }
+
+    const audio = audioElementsRef.current[deckId];
+    if (!audio) return;
+
+    if (!audio.src) {
+      const defaultUrls: Record<number, string> = {
+        1: '/Knight Club Session 1 - Mastered High Quality.wav',
+        2: '/Knight Club Session 2 - Mastered.wav',
+        3: '/Knight Club-Session 3.wav',
+        4: '/Knight Club Session 4 - Remastered.wav',
+      };
+      audio.src = new URL(defaultUrls[deckId], window.location.origin).href;
+      audio.load();
+    }
+
+    if (audio.paused) {
+      playPendingRef.current[deckId] = true;
+      audio.play()
+        .then(() => { playPendingRef.current[deckId] = false; })
+        .catch(err => {
+          playPendingRef.current[deckId] = false;
+          if (err.name !== 'AbortError') {
+            console.error('Playback failed:', err);
           }
-        }
-      }
-      setDeck(deckId, { isPlaying: targetPlaying });
+        });
     } else {
-      setDeck(deckId, { isPlaying: targetPlaying });
+      audio.pause();
     }
   };
 

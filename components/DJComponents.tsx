@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Volume2, VolumeX } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { playClick, playTick, playDegauss } from '@/lib/audioUtils';
+import { useAudio } from '@/components/AudioProvider';
 
 // --- RETAIL RETRO CUSTOM COMPONENTS ---
 
@@ -540,57 +541,48 @@ export function LEDEqualizer({
   const [rightVU, setRightVU] = useState<number>(0);
   const [waveform, setWaveform] = useState<number[]>(Array(24).fill(2));
 
+  const { analyserNode } = useAudio() ?? {};
+  const dataArrayRef = useRef<Uint8Array | null>(null);
+  const lastScrollTimeRef = useRef(0);
+
   useEffect(() => {
+    if (!analyserNode) return;
+    if (!dataArrayRef.current) {
+      dataArrayRef.current = new Uint8Array(analyserNode.frequencyBinCount);
+    }
+
     let frame: number;
-    let tick = 0;
-    let lastTime = 0;
-    const scrollInterval = 1000 / 30; // Smooth 30 FPS scrolling
 
     const animate = (timestamp: number) => {
-      if (!lastTime) lastTime = timestamp;
-      const elapsed = timestamp - lastTime;
+      const dataArray = dataArrayRef.current;
+      if (isPlaying && dataArray) {
+        analyserNode.getByteFrequencyData(dataArray);
 
-      // Make the visualizer pulse on beat if not playing, or react dynamically to EQs if playing
-      tick += 0.08 * (bpm / 120);
+        let bassSum = 0;
+        for (let i = 0; i < Math.min(10, dataArray.length); i++) bassSum += dataArray[i];
+        const averageBass = bassSum / Math.min(10, dataArray.length);
+        const vuLevel = Math.min(8, Math.max(1, Math.floor((averageBass / 255) * 8.5)));
+        setLeftVU(vuLevel);
+        setRightVU(vuLevel);
 
-      if (isPlaying) {
-        // Dynamic VU calculation based on continuous time-waves and EQs
-        const rawLeft = (Math.sin(tick * 1.8) * 0.4 + 0.5) * (eqLow / 50 * 0.5 + eqMid / 50 * 0.3 + eqHi / 50 * 0.2) + Math.random() * 0.15;
-        const rawRight = (Math.cos(tick * 1.5) * 0.4 + 0.5) * (eqLow / 50 * 0.5 + eqMid / 50 * 0.3 + eqHi / 50 * 0.2) + Math.random() * 0.15;
-
-        setLeftVU(Math.min(8, Math.max(1, Math.floor(rawLeft * 8.5))));
-        setRightVU(Math.min(8, Math.max(1, Math.floor(rawRight * 8.5))));
+        if (timestamp - lastScrollTimeRef.current > 33) {
+          lastScrollTimeRef.current = timestamp;
+          setWaveform((prev) => {
+            const next = [...prev.slice(1)];
+            let midSum = 0;
+            for (let i = 10; i < Math.min(30, dataArray.length); i++) midSum += dataArray[i];
+            const energy = ((averageBass * 0.7) + ((midSum / Math.max(1, Math.min(20, dataArray.length - 10))) * 0.3)) / 255;
+            next.push(Math.max(1.5, energy * 12));
+            return next;
+          });
+        }
       } else {
-        // Faint standby pulse on the VU meters
-        const standbyPulse = Math.floor((Math.sin(timestamp * 0.003) * 0.5 + 0.5) * 2);
-        setLeftVU(standbyPulse);
-        setRightVU(standbyPulse);
-      }
-
-      if (elapsed >= scrollInterval) {
-        lastTime = timestamp - (elapsed % scrollInterval);
-
-        setWaveform((prev) => {
-          const next = [...prev.slice(1)];
-          if (isPlaying) {
-            // Generate a flowing, spiky audio waveform modulated by the physical EQ hardware settings
-            const bassMod = eqLow / 50;
-            const midMod = eqMid / 50;
-            const trebleMod = eqHi / 50;
-
-            const baseWave = Math.sin(tick * 1.2) * Math.cos(tick * 0.7) * 0.5 + 0.5;
-            const spikes = Math.sin(tick * 9) * 0.18 * trebleMod;
-            const flutter = (Math.random() * 0.22) * midMod;
-
-            const nextBar = Math.max(1.5, (baseWave * bassMod + spikes + flutter) * 12);
-            next.push(nextBar);
-          } else {
-            // Standby slow wave
-            const standbyBar = Math.max(1, (Math.sin(timestamp * 0.001) * 0.5 + 0.5) * 2.5);
-            next.push(standbyBar);
-          }
-          return next;
-        });
+        setLeftVU(1);
+        setRightVU(1);
+        if (timestamp - lastScrollTimeRef.current > 33) {
+          lastScrollTimeRef.current = timestamp;
+          setWaveform((prev) => [...prev.slice(1), 1.5]);
+        }
       }
 
       frame = requestAnimationFrame(animate);
@@ -598,7 +590,7 @@ export function LEDEqualizer({
 
     frame = requestAnimationFrame(animate);
     return () => cancelAnimationFrame(frame);
-  }, [isPlaying, bpm, eqHi, eqMid, eqLow]);
+  }, [analyserNode, isPlaying]);
 
   return (
     <div className="flex gap-2 items-center h-16 bg-zinc-950 p-1 rounded border border-zinc-900 shadow-inner w-full justify-between relative overflow-hidden select-none">
