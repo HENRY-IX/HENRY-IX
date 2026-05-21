@@ -35,40 +35,55 @@
   letter-spacing: inherit;
   white-space: nowrap;
   overflow: hidden;
+  opacity: 0;
 }
 
 .glitch::before {
   color: #0ff;
-  animation: glitch-before 3.5s infinite steps(1);
   clip-path: polygon(0 0, 100% 0, 100% 35%, 0 35%);
 }
 
 .glitch::after {
   color: #f0f;
-  animation: glitch-after 3.5s infinite steps(1);
   clip-path: polygon(0 65%, 100% 65%, 100% 100%, 0 100%);
+}
+
+/* Trigger on hover */
+.glitch:hover::before {
+  animation: glitch-before 0.6s steps(1) forwards;
+}
+.glitch:hover::after {
+  animation: glitch-after 0.6s steps(1) forwards;
+}
+
+/* Trigger when pinned in header */
+.glitch-active::before {
+  animation: glitch-before 3.5s infinite steps(1);
+}
+.glitch-active::after {
+  animation: glitch-after 3.5s infinite steps(1);
 }
 
 @keyframes glitch-before {
   0%   { transform: translate(0); opacity: 0; }
-  2%   { transform: translate(-3px, 1px); opacity: 1; }
-  4%   { transform: translate(3px, -1px); opacity: 1; }
-  6%   { transform: translate(0); opacity: 0; }
-  48%  { transform: translate(0); opacity: 0; }
-  50%  { transform: translate(2px, 2px); opacity: 1; clip-path: polygon(0 20%, 100% 20%, 100% 50%, 0 50%); }
-  52%  { transform: translate(-2px, -2px); opacity: 1; }
-  54%  { transform: translate(0); opacity: 0; }
+  10%  { transform: translate(-3px, 1px); opacity: 1; }
+  20%  { transform: translate(3px, -1px); opacity: 1; }
+  30%  { transform: translate(0); opacity: 0; }
+  60%  { transform: translate(0); opacity: 0; }
+  70%  { transform: translate(2px, 2px); opacity: 1; clip-path: polygon(0 20%, 100% 20%, 100% 50%, 0 50%); }
+  80%  { transform: translate(-2px, -2px); opacity: 1; }
+  90%  { transform: translate(0); opacity: 0; }
   100% { transform: translate(0); opacity: 0; }
 }
 
 @keyframes glitch-after {
   0%   { transform: translate(0); opacity: 0; }
-  2%   { transform: translate(3px, -1px); opacity: 1; }
-  4%   { transform: translate(-3px, 1px); opacity: 1; }
-  6%   { transform: translate(0); opacity: 0; }
-  48%  { transform: translate(0); opacity: 0; }
-  50%  { transform: translate(-2px, 2px); opacity: 1; clip-path: polygon(0 55%, 100% 55%, 100% 80%, 0 80%); }
-  52%  { transform: translate(2px, -2px); opacity: 1; }
-  54%  { transform: translate(0); opacity: 0; }
+  10%  { transform: translate(3px, -1px); opacity: 1; }
+  20%  { transform: translate(-3px, 1px); opacity: 1; }
+  30%  { transform: translate(0); opacity: 0; }
+  60%  { transform: translate(0); opacity: 0; }
+  70%  { transform: translate(-2px, 2px); opacity: 1; clip-path: polygon(0 55%, 100% 55%, 100% 80%, 0 80%); }
+  80%  { transform: translate(2px, -2px); opacity: 1; }
+  90%  { transform: translate(0); opacity: 0; }
   100% { transform: translate(0); opacity: 0; }
 }

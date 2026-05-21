@@ -101,6 +101,14 @@ function NavigationBar({ isDepth }: { isDepth: boolean }) {
 
 function HeroNode({ isDepth }: { isDepth: boolean }) {
   const { scrollY } = useScroll();
+  const [isInHeader, setIsInHeader] = useState(false);
+
+  // Track when the text is fully pinned in the header
+  useEffect(() => {
+    return scrollY.on('change', (v) => {
+      setIsInHeader(v >= 490);
+    });
+  }, [scrollY]);
 
   // Instantly reactive transforms with no state overhead (runs 60fps on animation thread)
   const yText = useTransform(scrollY, (v) => {
@@ -135,15 +143,24 @@ function HeroNode({ isDepth }: { isDepth: boolean }) {
       <AbstractLighting />
 
       <motion.div 
-        className="fixed inset-0 pointer-events-none flex justify-center items-center z-50"
+        className={cn(
+          "fixed inset-0 flex justify-center items-center z-50 transition-[pointer-events]",
+          isInHeader ? "pointer-events-auto" : "pointer-events-none"
+        )}
         style={{ y: yText, scale: scaleText }}
       >
         <motion.h1 
-          className="glitch font-sans text-[clamp(2rem,15vw,15vw)] w-full font-bold tracking-wider leading-none text-center select-none text-primary whitespace-nowrap"
+          className={cn(
+            "glitch font-sans text-[clamp(2rem,15vw,15vw)] w-full font-bold tracking-wider leading-none text-center select-none text-primary whitespace-nowrap transition-all",
+            isInHeader && "glitch-active cursor-pointer"
+          )}
           data-text="HENRY IX"
           initial={{ y: 100, opacity: 0, scale: 0.95 }}
           animate={{ y: 0, opacity: 1, scale: 1 }}
           transition={{ type: "spring", stiffness: 300, damping: 25, delay: 0.1 }}
+          onClick={() => {
+            if (isInHeader) window.scrollTo({ top: 0, behavior: 'smooth' });
+          }}
         >
           HENRY IX
         </motion.h1>
