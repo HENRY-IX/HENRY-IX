@@ -4,6 +4,7 @@ import React, { useRef, useEffect, createContext, useContext, useMemo } from 're
 import { playClick, playLockoutBlip } from '@/lib/audioUtils';
 import { trackWaveforms } from '@/app/trackWaveforms';
 import { useAudioStore, generateStaticPeaks } from '@/store/audioStore';
+import { audioEngine, type DeckDSPNodes } from '@/lib/AudioEngine';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -39,24 +40,18 @@ export const useAudio = () => useContext(AudioContext);
 // ---------------------------------------------------------------------------
 
 export function AudioProvider({ children }: { children: React.ReactNode }) {
-  // ── Read/write Zustand store ────────────────────────────────────────────
-  const {
-    decks,
-    setDeck,
-    setDecks,
-    crossfader,
-    leftActiveDeck,
-    rightActiveDeck,
-    setLeftActiveDeck,
-    setRightActiveDeck,
-    isMuted,
-    setIsMuted,
-    setPreloaderComplete,
-    setAudioDSPInitialized,
-  } = useAudioStore();
+  // ── Zustand selectors: Use only the specific state needed, not full destructure ──────────
+  const preloaderComplete = useAudioStore(s => s.preloaderComplete);
+  const setPreloaderComplete = useAudioStore(s => s.setPreloaderComplete);
+  const setAudioDSPInitialized = useAudioStore(s => s.setAudioDSPInitialized);
+  const setDeck = useAudioStore(s => s.setDeck);
+  const setDecks = useAudioStore(s => s.setDecks);
+  const isMuted = useAudioStore(s => s.isMuted);
+  const setIsMuted = useAudioStore(s => s.setIsMuted);
+  const setLeftActiveDeck = useAudioStore(s => s.setLeftActiveDeck);
+  const setRightActiveDeck = useAudioStore(s => s.setRightActiveDeck);
 
   // ── Body scroll lock while preloader active ─────────────────────────────
-  const { preloaderComplete } = useAudioStore();
   useEffect(() => {
     if (typeof window === 'undefined') return;
     if (!preloaderComplete) {
@@ -187,6 +182,9 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
         }
       });
 
+      // ── Initialize the imperative AudioEngine with DSP nodes ─────────────
+      audioEngine.init(ctx, deckNodesRef.current);
+
       return ctx;
     } catch (e) {
       console.error('Failed to initialize Web Audio DSP:', e);
@@ -228,15 +226,20 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       setDeck(deckId, { isPlaying: false });
     });
     widget.bind(SC.Widget.Events.PLAY_PROGRESS, (data: any) => {
+      // NOTE: DO NOT update progress to Zustand here!
+      // SoundCloud fires this event 10+ times per second.
+      // Updating Zustand causes AudioProvider to re-render,
+      // which triggers the useEffect with [decks] dependency,
+      // which loops through all HTML5 audio tags, burning CPU.
+      // Instead, store progress only in DOM elements or refs.
       const currentDur = useAudioStore.getState().decks[deckId]?.duration ?? 0;
       const computedDur = data.relativePosition > 0
         ? data.currentPosition / data.relativePosition / 1000
         : currentDur;
-      setDeck(deckId, {
-        progress: data.currentPosition / 1000,
-        duration: currentDur || computedDur || 0,
-        scMode: true,
-      });
+      // Update duration only if it changed significantly
+      if (Math.abs((computedDur || currentDur) - currentDur) > 0.5) {
+        setDeck(deckId, { duration: computedDur || currentDur || 0, scMode: true });
+      }
     });
   };
 
@@ -290,103 +293,116 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   // ── HTML5 audio sync effect ─────────────────────────────────────────────
+  // Optimized: Subscribe only to specific deck properties that affect playback,
+  // NOT the entire decks object. This prevents re-renders on every property change.
   useEffect(() => {
-    [1, 2, 3, 4].forEach(deckId => {
-      const deck = decks[deckId];
-      if (!deck) return;
+    const unsubscribe = useAudioStore.subscribe(
+      state => [
+        state.decks[1]?.url, state.decks[1]?.isPlaying, state.decks[1]?.pitch, state.decks[1]?.scMode,
+        state.decks[2]?.url, state.decks[2]?.isPlaying, state.decks[2]?.pitch, state.decks[2]?.scMode,
+        state.decks[3]?.url, state.decks[3]?.isPlaying, state.decks[3]?.pitch, state.decks[3]?.scMode,
+        state.decks[4]?.url, state.decks[4]?.isPlaying, state.decks[4]?.pitch, state.decks[4]?.scMode,
+      ],
+      () => {
+        const state = useAudioStore.getState();
+        [1, 2, 3, 4].forEach(deckId => {
+          const deck = state.decks[deckId];
+          if (!deck) return;
 
-      const audio = audioElementsRef.current[deckId];
-      if (!deck.scMode && audio) {
-        if (deck.url) {
-          if (loadedUrlsRef.current[deckId] !== deck.url) {
-            loadedUrlsRef.current[deckId] = deck.url;
-            const absoluteUrl = deck.url.startsWith('blob:') || deck.url.startsWith('http')
-              ? deck.url
-              : new URL(deck.url, window.location.origin).href;
-            audio.src = absoluteUrl;
-            audio.load();
+          const audio = audioElementsRef.current[deckId];
+          if (!deck.scMode && audio) {
+            if (deck.url) {
+              if (loadedUrlsRef.current[deckId] !== deck.url) {
+                loadedUrlsRef.current[deckId] = deck.url;
+                const absoluteUrl = deck.url.startsWith('blob:') || deck.url.startsWith('http')
+                  ? deck.url
+                  : new URL(deck.url, window.location.origin).href;
+                audio.src = absoluteUrl;
+                audio.load();
+              }
+            }
+
+            if (deck.isPlaying) {
+              const ctx = audioContextRef.current;
+              if (ctx && ctx.state === 'suspended') ctx.resume();
+              if (audio.paused && audio.src && !playPendingRef.current[deckId] && !scratchingRef.current[deckId]) {
+                playPendingRef.current[deckId] = true;
+                audio.play()
+                  .then(() => { playPendingRef.current[deckId] = false; })
+                  .catch(err => {
+                    playPendingRef.current[deckId] = false;
+                    console.warn('HTML5 audio playback failed:', err);
+                  });
+              }
+            } else {
+              if (!audio.paused) audio.pause();
+            }
+
+            const targetRate = 1 + (deck.pitch || 0) / 100;
+            if (Math.abs(audio.playbackRate - targetRate) > 0.005) {
+              audio.playbackRate = targetRate;
+            }
+          } else if (deck.scMode && audio) {
+            if (!audio.paused) audio.pause();
           }
-        }
-
-        if (deck.isPlaying) {
-          const ctx = audioContextRef.current;
-          if (ctx && ctx.state === 'suspended') ctx.resume();
-          if (audio.paused && audio.src && !playPendingRef.current[deckId] && !scratchingRef.current[deckId]) {
-            playPendingRef.current[deckId] = true;
-            audio.play()
-              .then(() => { playPendingRef.current[deckId] = false; })
-              .catch(err => {
-                playPendingRef.current[deckId] = false;
-                console.warn('HTML5 audio playback failed:', err);
-              });
-          }
-        } else {
-          if (!audio.paused) audio.pause();
-        }
-
-        const targetRate = 1 + (deck.pitch || 0) / 100;
-        if (Math.abs(audio.playbackRate - targetRate) > 0.005) {
-          audio.playbackRate = targetRate;
-        }
-      } else if (deck.scMode && audio) {
-        if (!audio.paused) audio.pause();
+        });
       }
-    });
-  }, [decks]);
+    );
+    return unsubscribe;
+  }, []);
 
-  // ── EQ / Filter / Gain DSP sync ─────────────────────────────────────────
+  // ── Selective EQ / Filter / Gain DSP sync (OPTIMIZED) ────────────────────
+  // This effect now only runs when actual DSP parameters change (EQ, filter, volume, crossfader).
+  // We use specific selectors instead of subscribing to the entire decks object.
   useEffect(() => {
-    const ctx = audioContextRef.current;
-    if (!ctx) return;
-
-    [1, 2, 3, 4].forEach(deckId => {
-      const deck = decks[deckId];
-      const nodes = deckNodesRef.current[deckId];
-      if (!deck || !nodes) return;
-
-      const eqLow = deck.eqLow ?? 50;
-      const lowGain = eqLow < 50 ? -32 * (1 - eqLow / 50) : 12 * ((eqLow - 50) / 50);
-      nodes.lowShelf.gain.setTargetAtTime(lowGain, ctx.currentTime, 0.015);
-
-      const eqMid = deck.eqMid ?? 50;
-      const midGain = eqMid < 50 ? -32 * (1 - eqMid / 50) : 10 * ((eqMid - 50) / 50);
-      nodes.midPeak.gain.setTargetAtTime(midGain, ctx.currentTime, 0.015);
-
-      const eqHi = deck.eqHi ?? 50;
-      const hiGain = eqHi < 50 ? -32 * (1 - eqHi / 50) : 10 * ((eqHi - 50) / 50);
-      nodes.highShelf.gain.setTargetAtTime(hiGain, ctx.currentTime, 0.015);
-
-      const filter = deck.filter ?? 50;
-      if (filter < 50) {
-        nodes.filterNode.type = 'lowpass';
-        const pct = filter / 50;
-        nodes.filterNode.frequency.setTargetAtTime(80 + 19920 * Math.pow(pct, 2.5), ctx.currentTime, 0.015);
-      } else if (filter > 50) {
-        nodes.filterNode.type = 'highpass';
-        const pct = (filter - 50) / 50;
-        nodes.filterNode.frequency.setTargetAtTime(15 + 5985 * Math.pow(pct, 2.5), ctx.currentTime, 0.015);
-      } else {
-        nodes.filterNode.type = 'peaking';
-        nodes.filterNode.gain.setTargetAtTime(0, ctx.currentTime, 0.015);
+    // Subscribe to EQ, filter, volume, crossfader changes only
+    const unsubscribe = useAudioStore.subscribe(
+      (state): [boolean, number] => [state.isMuted, state.crossfader],
+      ([newMuted, newCrossfader]) => {
+        // When mute or crossfader changes, update all deck gains
+        [1, 2, 3, 4].forEach(deckId => {
+          const state = useAudioStore.getState();
+          const deck = state.decks[deckId];
+          if (!deck) return;
+          const cfMult = audioEngine.computeCrossfaderGain(deck.crossfaderAssign, newCrossfader);
+          audioEngine.setGain(deckId, deck.volume, cfMult, newMuted);
+        });
       }
+    );
+    return unsubscribe;
+  }, []);
 
-      const faderVol = deck.volume / 100;
-      let assignMult = 1;
-      if (deck.crossfaderAssign === 'L') {
-        assignMult = crossfader <= 50 ? 1 : Math.max(0, 1 - (crossfader - 50) / 50);
-      } else if (deck.crossfaderAssign === 'R') {
-        assignMult = crossfader >= 50 ? 1 : Math.max(0, crossfader / 50);
+  // ── Monitor individual deck EQ/filter changes (also optimized) ──────────
+  // Components will call audioEngine directly for instant updates.
+  // This effect only validates and applies changes from Zustand if needed.
+  useEffect(() => {
+    // Listen to specific deck changes only
+    const unsubscribe = useAudioStore.subscribe(
+      state => [
+        state.decks[1]?.eqLow, state.decks[1]?.eqMid, state.decks[1]?.eqHi, state.decks[1]?.filter, state.decks[1]?.volume,
+        state.decks[2]?.eqLow, state.decks[2]?.eqMid, state.decks[2]?.eqHi, state.decks[2]?.filter, state.decks[2]?.volume,
+        state.decks[3]?.eqLow, state.decks[3]?.eqMid, state.decks[3]?.eqHi, state.decks[3]?.filter, state.decks[3]?.volume,
+        state.decks[4]?.eqLow, state.decks[4]?.eqMid, state.decks[4]?.eqHi, state.decks[4]?.filter, state.decks[4]?.volume,
+        state.crossfader, state.isMuted,
+      ],
+      () => {
+        // If EQ values come from elsewhere (e.g., MIDI), apply them via AudioEngine
+        // In normal operation, components call audioEngine directly (this won't fire often)
+        [1, 2, 3, 4].forEach(deckId => {
+          const state = useAudioStore.getState();
+          const deck = state.decks[deckId];
+          if (!deck) return;
+          audioEngine.setEQ(deckId, 'low', deck.eqLow ?? 50);
+          audioEngine.setEQ(deckId, 'mid', deck.eqMid ?? 50);
+          audioEngine.setEQ(deckId, 'high', deck.eqHi ?? 50);
+          audioEngine.setFilter(deckId, deck.filter ?? 50);
+          const cfMult = audioEngine.computeCrossfaderGain(deck.crossfaderAssign, state.crossfader);
+          audioEngine.setGain(deckId, deck.volume, cfMult, state.isMuted);
+        });
       }
-
-      const targetGain = isMuted ? 0 : faderVol * assignMult;
-      nodes.gainNode.gain.setTargetAtTime(targetGain, ctx.currentTime, 0.015);
-
-      const widget = widgetRefs.current[deckId];
-      if (widget && deck.isReady) {
-        try { widget.setVolume(Math.round(deck.volume * assignMult)); } catch (e) {}
-      }
-    });
-  }, [decks, crossfader, isMuted]);
+    );
+    return unsubscribe;
+  }, []);
 
   // ── Global togglePlayGlobal (window binding for MediaSession) ───────────
   useEffect(() => {
@@ -436,20 +452,34 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   // ── MediaSession API ────────────────────────────────────────────────────
+  // Optimized: Only subscribe to isPlaying state for each deck, not entire decks object
   useEffect(() => {
     if (typeof window === 'undefined' || !('mediaSession' in navigator)) return;
-    const activeDeckId = [1, 2, 3, 4].find(id => decks[id]?.isPlaying);
-    const activeDeck = activeDeckId ? decks[activeDeckId] : null;
-    if (activeDeck) {
-      navigator.mediaSession.metadata = new MediaMetadata({
-        title: activeDeck.title, artist: 'Henry IX', album: 'DJ Mix Archive',
-        artwork: [{ src: getSessionImage(activeDeck.title), sizes: '512x512', type: 'image/jpeg' }],
-      });
-      navigator.mediaSession.playbackState = 'playing';
-    } else {
-      navigator.mediaSession.playbackState = 'paused';
-    }
-  }, [decks]);
+    
+    const unsubscribe = useAudioStore.subscribe(
+      state => [
+        state.decks[1]?.isPlaying, state.decks[1]?.title,
+        state.decks[2]?.isPlaying, state.decks[2]?.title,
+        state.decks[3]?.isPlaying, state.decks[3]?.title,
+        state.decks[4]?.isPlaying, state.decks[4]?.title,
+      ],
+      () => {
+        const state = useAudioStore.getState();
+        const activeDeckId = [1, 2, 3, 4].find(id => state.decks[id]?.isPlaying);
+        const activeDeck = activeDeckId ? state.decks[activeDeckId] : null;
+        if (activeDeck) {
+          navigator.mediaSession.metadata = new MediaMetadata({
+            title: activeDeck.title, artist: 'Henry IX', album: 'DJ Mix Archive',
+            artwork: [{ src: getSessionImage(activeDeck.title), sizes: '512x512', type: 'image/jpeg' }],
+          });
+          navigator.mediaSession.playbackState = 'playing';
+        } else {
+          navigator.mediaSession.playbackState = 'paused';
+        }
+      }
+    );
+    return unsubscribe;
+  }, []);
 
   useEffect(() => {
     if (typeof window === 'undefined' || !('mediaSession' in navigator)) return;
@@ -469,7 +499,8 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
 
   // ── togglePlayGlobal (React-accessible version) ─────────────────────────
   const togglePlayGlobal = (deckId: number) => {
-    const deck = decks[deckId];
+    const state = useAudioStore.getState();
+    const deck = state.decks[deckId];
     if (!deck) return;
     playClick(1000, 'sine', 0.03);
     const targetPlaying = !deck.isPlaying;
@@ -513,7 +544,8 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     const ctx = initAudioDSP();
     if (ctx && ctx.state === 'suspended') ctx.resume().catch(() => {});
 
-    const deck = decks[deckId];
+    const state = useAudioStore.getState();
+    const deck = state.decks[deckId];
     const widget = widgetRefs.current[deckId];
     const isLocal = !!track.isLocalFile || (track.url && track.url.startsWith('/'));
 
@@ -677,41 +709,44 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     } catch (e) { return 128; }
   };
 
-  // ── activeDeckInfo (derived — always fresh from store) ─────────────────
-  const activeDeckInfo = (() => {
-    const activeDeckId = [1, 2, 3, 4].find(id => decks[id]?.isPlaying);
-    const activeDeck = activeDeckId ? decks[activeDeckId] : decks[leftActiveDeck] ?? decks[1];
-    return {
-      id: activeDeck.id, title: activeDeck.title, isPlaying: activeDeck.isPlaying,
-      isReady: activeDeck.isReady, bpm: activeDeck.bpm,
-      progress: activeDeck.progress, duration: activeDeck.duration,
-    };
-  })();
-
   // ── Context value — useMemo so non-reactive data doesn't cascade ────────
-  const contextValue = useMemo(() => ({
-    // Stable refs — never cause re-renders
-    audioElementsRef, playPendingRef, scratchingRef, widgetRefs,
-    // Stable functions
-    initAudioDSP, loadLocalFile, seekLocalBuffer,
-    togglePlayGlobal, togglePlay, playTrack, playLockoutBlip, estimateBPM,
-    // Lightweight UI state (rarely changes)
-    isMuted, setIsMuted,
-    preloaderComplete, setPreloaderComplete,
-    // Deck state — now read from Zustand directly by consumers,
-    // but exposed here for legacy compatibility
-    decks, setDecks,
-    crossfader,
-    setCrossfader: useAudioStore.getState().setCrossfader,
-    leftActiveDeck, setLeftActiveDeck,
-    rightActiveDeck, setRightActiveDeck,
-    activeDeckInfo,
-    // AnalyserNode getter
-    get analyserNode() { return masterAnalyserRef.current; },
+  const contextValue = useMemo(() => (
+    {
+      // Stable refs — never cause re-renders
+      audioElementsRef, playPendingRef, scratchingRef, widgetRefs,
+      // Stable functions
+      initAudioDSP, loadLocalFile, seekLocalBuffer,
+      togglePlayGlobal, togglePlay, playTrack, playLockoutBlip, estimateBPM,
+      // Lightweight UI state (rarely changes)
+      isMuted, setIsMuted,
+      preloaderComplete, setPreloaderComplete,
+      // Deck state — now use getters to fetch fresh data from Zustand,
+      // preventing stale closures and unnecessary re-renders
+      get decks() { return useAudioStore.getState().decks; },
+      setDecks,
+      get crossfader() { return useAudioStore.getState().crossfader; },
+      setCrossfader: useAudioStore.getState().setCrossfader,
+      get leftActiveDeck() { return useAudioStore.getState().leftActiveDeck; },
+      setLeftActiveDeck,
+      get rightActiveDeck() { return useAudioStore.getState().rightActiveDeck; },
+      setRightActiveDeck,
+      get activeDeckInfo() {
+        const state = useAudioStore.getState();
+        const activeDeckId = [1, 2, 3, 4].find(id => state.decks[id]?.isPlaying);
+        const activeDeck = activeDeckId ? state.decks[activeDeckId] : state.decks[state.leftActiveDeck] ?? state.decks[1];
+        return {
+          id: activeDeck.id, title: activeDeck.title, isPlaying: activeDeck.isPlaying,
+          isReady: activeDeck.isReady, bpm: activeDeck.bpm,
+          progress: activeDeck.progress, duration: activeDeck.duration,
+        };
+      },
+      // AnalyserNode getter
+      get analyserNode() { return masterAnalyserRef.current; },
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }), [isMuted, preloaderComplete]);
-  // NOTE: deck/crossfader/activeDeck state is intentionally excluded from memo deps —
-  // components that need reactive deck updates should subscribe via useAudioStore() directly.
+  ), [isMuted, preloaderComplete]);
+  // NOTE: deck/crossfader/activeDeck are now getters that fetch fresh Zustand state.
+  // Components needing reactive updates should subscribe via useAudioStore() directly.
 
   return (
     <AudioContext.Provider value={contextValue}>
