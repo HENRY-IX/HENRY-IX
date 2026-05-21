@@ -139,7 +139,8 @@ function HeroNode({ isDepth }: { isDepth: boolean }) {
         style={{ y: yText, scale: scaleText }}
       >
         <motion.h1 
-          className="font-sans text-[clamp(2rem,15vw,15vw)] w-full font-bold tracking-wider leading-none text-center select-none text-primary whitespace-nowrap"
+          className="glitch font-sans text-[clamp(2rem,15vw,15vw)] w-full font-bold tracking-wider leading-none text-center select-none text-primary whitespace-nowrap"
+          data-text="HENRY IX"
           initial={{ y: 100, opacity: 0, scale: 0.95 }}
           animate={{ y: 0, opacity: 1, scale: 1 }}
           transition={{ type: "spring", stiffness: 300, damping: 25, delay: 0.1 }}
