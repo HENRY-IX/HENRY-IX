@@ -2,20 +2,14 @@
 
 import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MapPin, Cloud, ArrowRight } from 'lucide-react';
+import { Cloud, ArrowRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { playClick, playTick, playDegauss } from '@/lib/audioUtils';
-import { SplitFlapText } from '@/components/DJComponents';
 
 const SPRING_CONFIG = { type: "spring" as const, stiffness: 300, damping: 20 };
 
 export function Schedule({ isDepth }: { isDepth: boolean }) {
   const [inView, setInView] = useState(false);
-  const gigs = [
-    { date: 'OCT 16, 2026', venue: 'THE KNIGHT CLUB', location: 'LONDON, UK', status: 'LIVE // [SYNC]' },
-    { date: 'NOV 05, 2026', venue: 'ROYAL COURT MAINROOM', location: 'BERLIN, GER', status: 'TICKETS_ACTIVE' },
-    { date: 'DEC 31, 2026', venue: 'CORNER NEW CROSS', location: 'TOKYO, JPN', status: 'SOLD OUT' }
-  ];
 
   return (
     <motion.section 
@@ -37,60 +31,35 @@ export function Schedule({ isDepth }: { isDepth: boolean }) {
         <div className={cn("h-[1px] flex-grow w-full md:w-auto md:ml-8", isDepth ? "bg-zinc-800" : "bg-black/20")} />
       </motion.div>
 
-      <div className="space-y-4">
-        {(!gigs || gigs.length === 0) ? (
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: "-50px" }}
-            transition={{ ...SPRING_CONFIG, delay: 0.1 }}
-            className="w-full flex justify-center py-12 border-b border-dashed transition-colors border-zinc-800/50"
-          >
-             <span className="font-mono text-sm tracking-widest opacity-50 uppercase">No upcoming shows</span>
-          </motion.div>
-        ) : (
-          gigs.map((gig, i) => (
-           <motion.div 
-             key={i}
-             initial={{ opacity: 0, y: 20 }}
-             whileInView={{ opacity: 1, y: 0 }}
-             viewport={{ once: true }}
-             transition={{ ...SPRING_CONFIG, delay: i * 0.15 }}
-             whileHover={{ scale: 1.01, x: 10 }}
-             className={cn(
-               "w-full flex md:flex-row flex-col justify-between items-start md:items-center p-6 border-b transition-colors group magnetic-snap cursor-pointer",
-               isDepth ? "border-zinc-800 hover:bg-zinc-900/40" : "border-black/10 hover:bg-black/5"
-             )}
-             onClick={() => playClick(650, 'triangle', 0.04)}
-           >
-              <div className="flex flex-col md:flex-row gap-4 md:gap-16 w-full">
-                <div className="font-mono text-sm tracking-widest opacity-60 w-36 shrink-0">
-                  <SplitFlapText text={gig.date} active={inView} />
-                </div>
-                <div className="flex-grow">
-                  <h3 className="font-sans text-2xl font-bold tracking-tighter mb-2 text-zinc-100 group-hover:text-primary transition-colors">
-                    <SplitFlapText text={gig.venue} active={inView} />
-                  </h3>
-                  <div className="flex items-center gap-2 font-mono text-[10px] opacity-60 text-zinc-400">
-                    <MapPin className="w-3 h-3" /> 
-                    <SplitFlapText text={gig.location} active={inView} />
-                  </div>
-                </div>
-              </div>
-              
-              <div className="mt-6 md:mt-0 flex-shrink-0">
-                <span className={cn(
-                  "font-mono text-[8px] px-2 py-1 border tracking-[0.1em] font-bold rounded",
-                  gig.status === 'SOLD OUT' ? (isDepth ? "border-zinc-800 text-zinc-500 bg-zinc-950" : "border-black/20 text-zinc-500") :
-                  gig.status.includes('LIVE') ? "border-primary/50 text-primary bg-primary/5 animate-pulse shadow-[0_0_8px_rgba(216,22,63,0.15)]" :
-                  isDepth ? "border-emerald-500/30 text-emerald-500 bg-emerald-950/20" : "border-black/20 text-black"
-                )}>
-                  {gig.status}
-                </span>
-              </div>
-           </motion.div>
-          ))
-        )}
+      <div className="w-full flex flex-col items-center justify-center py-20 border border-dashed border-zinc-800 rounded-lg bg-zinc-950/20 relative overflow-hidden group">
+        {/* Decorative corner highlights */}
+        <div className="absolute top-0 left-0 w-2 h-2 border-t border-l border-zinc-700" />
+        <div className="absolute top-0 right-0 w-2 h-2 border-t border-r border-zinc-700" />
+        <div className="absolute bottom-0 left-0 w-2 h-2 border-b border-l border-zinc-700" />
+        <div className="absolute bottom-0 right-0 w-2 h-2 border-b border-r border-zinc-700" />
+
+        {/* Pulse effect indicator */}
+        <motion.div 
+          animate={{ scale: [1, 1.1, 1], opacity: [0.3, 0.6, 0.3] }}
+          transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+          className="w-3 h-3 rounded-full bg-primary mb-6 shadow-[0_0_12px_rgba(216,22,63,0.6)]"
+        />
+
+        <motion.h3 
+          initial={{ letterSpacing: "0.2em", opacity: 0.8 }}
+          whileInView={{ letterSpacing: "0.4em", opacity: 1 }}
+          transition={{ duration: 1.5, ease: "easeOut" }}
+          className="font-mono text-xl md:text-2xl font-bold tracking-[0.4em] uppercase text-zinc-100 mb-3 text-center pr-[-0.4em]"
+        >
+          COMING SOON
+        </motion.h3>
+
+        <p className="font-mono text-[9px] tracking-[0.25em] text-zinc-500 uppercase max-w-md text-center px-4 leading-relaxed">
+          TRANSMISSION_STAGED // DATES_UNDER_CLASSIFICATION
+        </p>
+
+        {/* Dynamic scanning line element */}
+        <div className="absolute inset-0 pointer-events-none bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.25)_50%),linear-gradient(90deg,rgba(255,0,0,0.06),rgba(0,255,0,0.02),rgba(0,0,255,0.06))] bg-[size:100%_4px,3px_100%] opacity-20" />
       </div>
     </motion.section>
   );
