@@ -15,7 +15,7 @@ import { useAudioStore } from '@/store/audioStore';
 
 
 const formatTime = (secs: number) => {
-  if (isNaN(secs) || secs < 0) return "00:00";
+  if (isNaN(secs) || secs === undefined) return "00:00";
   const m = Math.floor(secs / 60);
   const s = Math.floor(secs % 60);
   return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
@@ -44,10 +44,6 @@ const getSessionImage = (title: string) => {
 };
 
 
-type Deck = {
-  [key: string]: unknown;
-};
-
 // RotaryKnob is imported from @/components/DJComponents
 
 // A custom responsive double-deck horizontal scrolling waveform monitor - Stacked Beatgrid Controller
@@ -57,8 +53,8 @@ function DualDeckWaveforms({
   isDepth,
   audioElementsRef
 }: { 
-  leftDeck: Deck; 
-  rightDeck: Deck; 
+  leftDeck: any; 
+  rightDeck: any; 
   isDepth: boolean;
   audioElementsRef?: React.RefObject<Record<number, HTMLAudioElement | null>>;
 }) {
@@ -111,10 +107,10 @@ function DualDeckWaveforms({
     const secondDropStart = breakdownStart + breakdownLen;
     const outroStart = 0.85 + ((seed >> 6) % 3) * 0.03; // 0.85 to 0.91
     
-    let envelope: number;
-    let transientFrequency: number; // ticks spacing (assigned by section-specific branches)
-    let transientStrength: number;
-    let compressIntensity: number; // multiplier to represent high limiter density
+    let envelope = 0.15;
+    let transientFrequency = 8; // ticks spacing
+    let transientStrength = 0.4;
+    let compressIntensity = 1.0; // multiplier to represent high limiter density
     
     if (progress < introLen) {
       // 1. Intro Beats: periodic kicks
@@ -413,25 +409,24 @@ function DualDeckWaveforms({
             const drawX = x - pixelShift;
             const barTime = progress + (drawX - centerX) / pixelsPerSecond;
             if (barTime >= 0 && barTime <= (deck.duration || 300)) {
-              const hVal = (deck.waveformPeaks && deck.waveformPeaks.length > 0)
-                ? (() => {
-                    const exactIdx = barTime * PEAK_DENSITY;
-                    const idxBase = Math.floor(exactIdx);
-                    const fract = exactIdx - idxBase;
-                    
-                    const p0 = deck.waveformPeaks[idxBase] !== undefined 
-                      ? deck.waveformPeaks[idxBase] 
-                      : 0.02;
-                    const p1 = deck.waveformPeaks[idxBase + 1] !== undefined 
-                      ? deck.waveformPeaks[idxBase + 1] 
-                      : p0;
-                    
-                    return p0 + (p1 - p0) * fract;
-                  })()
-                : (() => {
-                    const idx = Math.floor(barTime * 14);
-                    return getWaveformHeight(deck.id, idx, deck.duration || 300);
-                  })();
+              let hVal = 0.02;
+              if (deck.waveformPeaks && deck.waveformPeaks.length > 0) {
+                const exactIdx = barTime * PEAK_DENSITY;
+                const idxBase = Math.floor(exactIdx);
+                const fract = exactIdx - idxBase;
+                
+                const p0 = deck.waveformPeaks[idxBase] !== undefined 
+                  ? deck.waveformPeaks[idxBase] 
+                  : 0.02;
+                const p1 = deck.waveformPeaks[idxBase + 1] !== undefined 
+                  ? deck.waveformPeaks[idxBase + 1] 
+                  : p0;
+                  
+                hVal = p0 + (p1 - p0) * fract;
+              } else {
+                const idx = Math.floor(barTime * 14);
+                hVal = getWaveformHeight(deck.id, idx, deck.duration || 300);
+              }
               
               const eqLow = deck.eqLow ?? 50;
               const eqMid = deck.eqMid ?? 50;
@@ -1294,7 +1289,7 @@ function MixArchive({
               state.lastAngle = angle;
               
               const now = performance.now();
-                state.velocity = delta / dt;
+              const dt = (now - state.lastTime) / 1000;
               if (dt > 0) {
                 state.velocity = delta;
                 state.lastTime = now;
@@ -1997,6 +1992,8 @@ function MixArchive({
         </div>
       </div>
     );
+  };
+
   const [searchQuery, setSearchQuery] = useState('');
 
   const renderTracklist = () => {
