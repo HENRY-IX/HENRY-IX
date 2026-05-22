@@ -44,6 +44,10 @@ const getSessionImage = (title: string) => {
 };
 
 
+type Deck = {
+  [key: string]: unknown;
+};
+
 // RotaryKnob is imported from @/components/DJComponents
 
 // A custom responsive double-deck horizontal scrolling waveform monitor - Stacked Beatgrid Controller
@@ -53,8 +57,8 @@ function DualDeckWaveforms({
   isDepth,
   audioElementsRef
 }: { 
-  leftDeck: any; 
-  rightDeck: any; 
+  leftDeck: Deck; 
+  rightDeck: Deck; 
   isDepth: boolean;
   audioElementsRef?: React.RefObject<Record<number, HTMLAudioElement | null>>;
 }) {
