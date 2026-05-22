@@ -69,10 +69,10 @@ const generateStaticPeaks = (num = 500): number[] => {
   const seed = 123;
   for (let i = 0; i < num; i++) {
     const progress = i / num;
-    let envelope = 0.15;
+    let envelope: number;
     let transientFrequency = 8;
-    let transientStrength = 0.4;
-    let compressIntensity = 1.0;
+    let transientStrength: number;
+    let compressIntensity: number;
 
     const introLen = 0.15;
     const breakdownStart = 0.48;
