@@ -201,10 +201,92 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       // ── Initialize the imperative AudioEngine with DSP nodes ─────────────
       audioEngine.init(ctx, deckNodesRef.current);
 
+      // Sync initial DSP parameters from the Zustand store
+      const state = useAudioStore.getState();
+      [1, 2, 3, 4].forEach(deckId => {
+        const deck = state.decks[deckId];
+        if (deck) {
+          audioEngine.setEQ(deckId, 'low', deck.eqLow);
+          audioEngine.setEQ(deckId, 'mid', deck.eqMid);
+          audioEngine.setEQ(deckId, 'high', deck.eqHi);
+          audioEngine.setFilter(deckId, deck.filter);
+          const cfMult = audioEngine.computeCrossfaderGain(deck.crossfaderAssign, state.crossfader);
+          audioEngine.setGain(deckId, deck.volume, cfMult, state.isMuted);
+        }
+      });
+
       return ctx;
     } catch (e) {
       console.error('Failed to initialize Web Audio DSP:', e);
       return null;
+    }
+  };
+
+  // ── togglePlayGlobal (React-accessible version) ─────────────────────────
+  const togglePlayGlobal = (deckId: number) => {
+    const state = useAudioStore.getState();
+    const deck = state.decks[deckId];
+    if (!deck) return;
+    playClick(1000, 'sine', 0.03);
+    const ctx = initAudioDSP();
+    if (ctx && ctx.state === 'suspended') ctx.resume().catch(() => {});
+
+    const widget = widgetRefs.current[deckId];
+    if (deck.scMode && widget) {
+      try {
+        deck.isPlaying ? widget.pause() : widget.play();
+      } catch (e) {
+        console.warn(`SoundCloud toggle failed on deck ${deckId}:`, e);
+        setDeck(deckId, { isPlaying: !deck.isPlaying });
+      }
+      return;
+    }
+
+    const audio = audioElementsRef.current[deckId];
+    if (!audio) return;
+
+    if (!audio.src && deck?.url) {
+      audio.src = new URL(deck.url, window.location.origin).href;
+      audio.load();
+    }
+
+    if (audio.paused) {
+      if (audio.readyState >= 2) {
+        playPendingRef.current[deckId] = true;
+        audio.play()
+          .then(() => { playPendingRef.current[deckId] = false; })
+          .catch(err => {
+            playPendingRef.current[deckId] = false;
+            if (err.name !== 'AbortError') {
+              console.warn(`Play failed on deck ${deckId}:`, err.message);
+              setDeck(deckId, { isPlaying: false });
+            }
+          });
+      } else {
+        // Wait for audio to be ready before calling play()
+        const playWhenReady = () => {
+          if (audio.readyState >= 2) {
+            playPendingRef.current[deckId] = true;
+            audio.play()
+              .then(() => { playPendingRef.current[deckId] = false; })
+              .catch(err => {
+                playPendingRef.current[deckId] = false;
+                if (err.name !== 'AbortError') {
+                  console.warn(`Play failed on deck ${deckId}:`, err.message);
+                  setDeck(deckId, { isPlaying: false });
+                }
+              });
+            audio.removeEventListener('canplay', playWhenReady);
+          }
+        };
+        audio.addEventListener('canplay', playWhenReady);
+        // Fallback cleanup if it takes too long
+        setTimeout(() => {
+          audio.removeEventListener('canplay', playWhenReady);
+        }, 10000);
+      }
+    } else {
+      audio.pause();
     }
   };
 
@@ -369,37 +451,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       const { decks: d, leftActiveDeck: lad } = useAudioStore.getState();
       const activeDeck = [1, 2, 3, 4].map(id => d[id]).find(dk => dk.isPlaying) || d[lad] || d[1];
       const deckId = deckIdInput !== undefined ? deckIdInput : ([1, 2, 3, 4].find(id => d[id].id === activeDeck.id) || 1);
-      const deckObj = d[deckId];
-      if (!deckObj) return;
-      const targetPlaying = !deckObj.isPlaying;
-
-      const widget = widgetRefs.current[deckId];
-      if (deckObj.scMode && widget && deckObj.isReady) {
-        try { targetPlaying ? widget.play() : widget.pause(); } catch (e) {
-          setDeck(deckId, { isPlaying: targetPlaying });
-        }
-      } else {
-        const audio = audioElementsRef.current[deckId];
-        if (audio) {
-          if (!audio.src && deckObj?.url) {
-            audio.src = new URL(deckObj.url, window.location.origin).href;
-            audio.load();
-          }
-          if (targetPlaying) {
-            playPendingRef.current[deckId] = true;
-            audio.play()
-              .then(() => { playPendingRef.current[deckId] = false; })
-              .catch(err => {
-                playPendingRef.current[deckId] = false;
-                if (err.name !== 'AbortError') {
-                  setDeck(deckId, { isPlaying: false });
-                }
-              });
-          } else {
-            audio.pause();
-          }
-        }
-      }
+      togglePlayGlobal(deckId);
     };
     return () => { delete (window as any).togglePlayGlobal; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -451,48 +503,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     } catch (e) { console.warn('MediaSession action handler error:', e); }
   }, []);
 
-  // ── togglePlayGlobal (React-accessible version) ─────────────────────────
-  const togglePlayGlobal = (deckId: number) => {
-    const state = useAudioStore.getState();
-    const deck = state.decks[deckId];
-    if (!deck) return;
-    playClick(1000, 'sine', 0.03);
-    const ctx = initAudioDSP();
-    if (ctx && ctx.state === 'suspended') ctx.resume().catch(() => {});
-
-    const widget = widgetRefs.current[deckId];
-    if (deck.scMode && widget) {
-      try {
-        deck.isPlaying ? widget.pause() : widget.play();
-      } catch (e) {
-        console.warn(`SoundCloud toggle failed on deck ${deckId}:`, e);
-        setDeck(deckId, { isPlaying: !deck.isPlaying });
-      }
-      return;
-    }
-
-    const audio = audioElementsRef.current[deckId];
-    if (!audio) return;
-
-    if (!audio.src && deck?.url) {
-      audio.src = new URL(deck.url, window.location.origin).href;
-      audio.load();
-    }
-
-    if (audio.paused) {
-      playPendingRef.current[deckId] = true;
-      audio.play()
-        .then(() => { playPendingRef.current[deckId] = false; })
-        .catch(err => {
-          playPendingRef.current[deckId] = false;
-          if (err.name !== 'AbortError') {
-            console.error('Playback failed:', err);
-          }
-        });
-    } else {
-      audio.pause();
-    }
-  };
+  // Note: togglePlayGlobal is defined earlier to allow access from window level
 
 
 

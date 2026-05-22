@@ -27,7 +27,7 @@ export interface DeckState {
   eqMid: number;
   eqLow: number;
   filter: number;
-  crossfaderAssign: 'L' | 'R';
+  crossfaderAssign: 'L' | 'R' | 'THRU';
   waveformPeaks: number[];
 }
 

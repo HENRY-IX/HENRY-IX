@@ -1838,9 +1838,16 @@ function MixArchive({
                       value={deck.volume}
                       onChange={(e) => {
                         if (!isLocked) {
+                          const val = Number(e.target.value);
+                          // 1. Instant audio DSP update (zero latency)
+                          const state = useAudioStore.getState();
+                          const cfMult = audioEngine.computeCrossfaderGain(deck.crossfaderAssign, state.crossfader);
+                          audioEngine.setGain(id, val, cfMult, state.isMuted);
+
+                          // 2. Update Zustand for UI display
                           setDecks((prev: any) => ({
                             ...prev,
-                            [id]: { ...prev[id], volume: Number(e.target.value) }
+                            [id]: { ...prev[id], volume: val }
                           }));
                         } else {
                           playLockoutBlip();
@@ -1893,6 +1900,13 @@ function MixArchive({
                     const nextAssign = 
                       deck.crossfaderAssign === 'L' ? 'R' :
                       deck.crossfaderAssign === 'R' ? 'THRU' : 'L';
+                    
+                    // 1. Instant audio DSP update (zero latency)
+                    const state = useAudioStore.getState();
+                    const cfMult = audioEngine.computeCrossfaderGain(nextAssign, state.crossfader);
+                    audioEngine.setGain(id, deck.volume, cfMult, state.isMuted);
+
+                    // 2. Update Zustand for UI display
                     setDecks((prev: any) => ({
                       ...prev,
                       [id]: { ...prev[id], crossfaderAssign: nextAssign }

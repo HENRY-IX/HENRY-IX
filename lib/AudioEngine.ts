@@ -106,13 +106,14 @@ export class AudioEngine {
 
   /**
    * Compute crossfader multiplier for a given deck and crossfader position.
-   * Deck must have a crossfaderAssign of 'L' or 'R'.
+   * Deck can have a crossfaderAssign of 'L', 'R', or 'THRU'.
    * Crossfader position: 0 (full left) → 50 (center) → 100 (full right)
    */
   computeCrossfaderGain(
-    crossfaderAssign: 'L' | 'R',
+    crossfaderAssign: 'L' | 'R' | 'THRU',
     crossfaderPosition: number
   ): number {
+    if (crossfaderAssign === 'THRU') return 1.0;
     const clamped = Math.max(0, Math.min(100, crossfaderPosition));
 
     if (crossfaderAssign === 'L') {
