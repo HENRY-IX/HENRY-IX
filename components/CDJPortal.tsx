@@ -15,7 +15,7 @@ import { useAudioStore } from '@/store/audioStore';
 
 
 const formatTime = (secs: number) => {
-  if (isNaN(secs) || secs === undefined) return "00:00";
+  if (isNaN(secs) || secs < 0) return "00:00";
   const m = Math.floor(secs / 60);
   const s = Math.floor(secs % 60);
   return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
@@ -44,6 +44,10 @@ const getSessionImage = (title: string) => {
 };
 
 
+type Deck = {
+  [key: string]: unknown;
+};
+
 // RotaryKnob is imported from @/components/DJComponents
 
 // A custom responsive double-deck horizontal scrolling waveform monitor - Stacked Beatgrid Controller
@@ -53,8 +57,8 @@ function DualDeckWaveforms({
   isDepth,
   audioElementsRef
 }: { 
-  leftDeck: any; 
-  rightDeck: any; 
+  leftDeck: Deck; 
+  rightDeck: Deck; 
   isDepth: boolean;
   audioElementsRef?: React.RefObject<Record<number, HTMLAudioElement | null>>;
 }) {
@@ -1285,7 +1289,7 @@ function MixArchive({
               state.lastAngle = angle;
               
               const now = performance.now();
-              const dt = (now - state.lastTime) / 1000;
+                state.velocity = delta / dt;
               if (dt > 0) {
                 state.velocity = delta;
                 state.lastTime = now;
@@ -1969,8 +1973,6 @@ function MixArchive({
         </div>
       </div>
     );
-  };
-
   const [searchQuery, setSearchQuery] = useState('');
 
   const renderTracklist = () => {
