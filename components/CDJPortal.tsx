@@ -6,7 +6,7 @@ import { Play, Pause, CircleDot, Music2, Disc, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 // --- MODULAR IMPORTS ---
-import { playClick } from '@/lib/audioUtils';
+import { playClick, playTick, playTabClick } from '@/lib/audioUtils';
 import { audioEngine } from '@/lib/AudioEngine';
 import { SynthesizerKnob, RotaryKnob, SplitFlapText, LEDEqualizer } from '@/components/DJComponents';
 import AudioVisualizerBackground from './AudioVisualizerBackground';
@@ -2128,8 +2128,9 @@ function MixArchive({
                 key={tab}
                 onClick={() => {
                   setActiveTab(tab);
-                  playClick(900, 'sine', 0.02);
+                  playTabClick();
                 }}
+                onMouseEnter={() => playTick()}
                 className={cn(
                   "px-4 py-2 rounded-md text-[9px] md:text-[10px] tracking-widest font-black uppercase border transition-all cursor-pointer active:scale-95 flex items-center gap-2",
                   isActive
@@ -2159,6 +2160,7 @@ function MixArchive({
             return (
               <div 
                 key={track.id}
+                onMouseEnter={() => playTick()}
                 className={cn(
                   "group flex flex-col gap-4 p-4 rounded-xl border bg-zinc-950/80 hover:bg-zinc-900/60 transition-all duration-300",
                   playingOnDecks.length > 0 ? "border-primary/40 shadow-[0_0_20px_rgba(216,22,63,0.1)]" : "border-zinc-800"

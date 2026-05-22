@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown } from 'lucide-react';
-import { playClick, playTick } from '@/lib/audioUtils';
+import { playClick, playTick, playNavSwoosh } from '@/lib/audioUtils';
 
 const navLinks = [
   { name: 'MIXES', href: '/mixes' },
@@ -105,7 +105,7 @@ export default function SiteHeader() {
             <Link
               key={link.href}
               href={link.href}
-              onClick={() => playClick()}
+              onClick={() => playNavSwoosh()}
               onMouseEnter={() => playTick()}
               className={`font-mono text-[10px] tracking-widest uppercase transition-colors shrink-0 ${
                 pathname === link.href
@@ -153,7 +153,7 @@ export default function SiteHeader() {
                     key={link.href}
                     href={link.href}
                     onClick={() => {
-                      playClick();
+                      playNavSwoosh();
                       setIsOpen(false);
                     }}
                     onMouseEnter={() => playTick()}

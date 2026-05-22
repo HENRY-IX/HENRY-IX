@@ -5,7 +5,7 @@ import { useAudio } from '@/components/AudioProvider';
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 import Link from 'next/link';
-import { playClick, playTick } from '@/lib/audioUtils';
+import { playClick, playTick, playNavSwoosh } from '@/lib/audioUtils';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -267,6 +267,8 @@ export default function LandingPage() {
               <Link
                 href={href}
                 className="group block w-full text-center relative"
+                onMouseEnter={() => playTick()}
+                onClick={() => playNavSwoosh()}
               >
                 <span
                   className="glitch font-sans font-bold text-primary text-[clamp(2.5rem,10vw,8rem)] leading-none tracking-wider uppercase select-none transition-all duration-300 group-hover:tracking-[0.15em] inline-block"
