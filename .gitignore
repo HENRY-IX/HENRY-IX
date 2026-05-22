@@ -10,5 +10,10 @@ coverage/
 *.py
 *.tsbuildinfo
 *.bak
+# Exclude raw multi-gigabyte audio tracks from Git
 public/*.wav
 public/*.m4a
+
+# Permitted web-optimized media formats
+# public/tracks/*.mp3
+
