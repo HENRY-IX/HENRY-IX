@@ -109,7 +109,7 @@ function DualDeckWaveforms({
     
     let envelope: number;
     let transientFrequency = 8; // ticks spacing
-    let transientStrength = 0.4;
+    let transientStrength: number;
     let compressIntensity = 1.0; // multiplier to represent high limiter density
     
     if (progress < introLen) {
