@@ -5,15 +5,13 @@ import { useAudio } from '@/components/AudioProvider';
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 import Link from 'next/link';
+import { playClick, playTick } from '@/lib/audioUtils';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
 const SPRING_CONFIG = { type: "spring" as const, stiffness: 300, damping: 20 };
-const playClick = (freq: number, type: OscillatorType, duration: number) => {
-  // simple blip for UI sounds
-};
 
 const HeroNode = React.memo(function HeroNode({ 
   isDepth,
@@ -74,6 +72,86 @@ const HeroNode = React.memo(function HeroNode({
         <span>LOC: LONDON, UK</span>
         <span>COORD_X: 51.5074° N</span>
         <span>COORD_Y: 0.1278° W</span>
+      </motion.div>
+
+      {/* Sleek Floating Social HUD */}
+      <motion.div 
+        initial={{ opacity: 0, y: -20 }}
+        animate={preloaderComplete ? { opacity: 1, y: 0 } : { opacity: 0, y: -20 }}
+        transition={{ type: "spring", stiffness: 300, damping: 25, delay: 0.9 }}
+        className="absolute top-8 md:top-10 left-1/2 -translate-x-1/2 md:left-auto md:right-8 md:translate-x-0 z-30 flex items-center gap-3 md:gap-4 font-mono text-[9px] md:text-[10px] tracking-[0.25em] text-zinc-400 select-none whitespace-nowrap"
+      >
+        <a 
+          href="https://www.facebook.com/HenryIXDJ/" 
+          target="_blank" 
+          rel="noopener noreferrer" 
+          className="text-zinc-500 hover:text-primary transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer"
+          onMouseEnter={() => playTick()}
+          onClick={() => playClick(800, 'sine', 0.03)}
+        >
+          <span className="hidden md:inline">FACEBOOK</span>
+          <span className="md:hidden">FB</span>
+        </a>
+        <span className="text-zinc-800 font-light">/</span>
+        <a 
+          href="https://www.instagram.com/henryixdj/" 
+          target="_blank" 
+          rel="noopener noreferrer" 
+          className="text-zinc-500 hover:text-primary transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer"
+          onMouseEnter={() => playTick()}
+          onClick={() => playClick(800, 'sine', 0.03)}
+        >
+          <span className="hidden md:inline">INSTAGRAM</span>
+          <span className="md:hidden">IG</span>
+        </a>
+        <span className="text-zinc-800 font-light">/</span>
+        <a 
+          href="https://soundcloud.com/henryixdj" 
+          target="_blank" 
+          rel="noopener noreferrer" 
+          className="text-zinc-500 hover:text-primary transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer"
+          onMouseEnter={() => playTick()}
+          onClick={() => playClick(800, 'sine', 0.03)}
+        >
+          <span className="hidden md:inline">SOUNDCLOUD</span>
+          <span className="md:hidden">SC</span>
+        </a>
+        <span className="text-zinc-800 font-light">/</span>
+        <a 
+          href="https://www.mixcloud.com/HenryIXDJ/" 
+          target="_blank" 
+          rel="noopener noreferrer" 
+          className="text-zinc-500 hover:text-primary transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer"
+          onMouseEnter={() => playTick()}
+          onClick={() => playClick(800, 'sine', 0.03)}
+        >
+          <span className="hidden md:inline">MIXCLOUD</span>
+          <span className="md:hidden">MC</span>
+        </a>
+        <span className="text-zinc-800 font-light">/</span>
+        <a 
+          href="https://www.tiktok.com/@henryixdj" 
+          target="_blank" 
+          rel="noopener noreferrer" 
+          className="text-zinc-500 hover:text-primary transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer"
+          onMouseEnter={() => playTick()}
+          onClick={() => playClick(800, 'sine', 0.03)}
+        >
+          <span className="hidden md:inline">TIKTOK</span>
+          <span className="md:hidden">TT</span>
+        </a>
+        <span className="text-zinc-800 font-light">/</span>
+        <a 
+          href="https://www.youtube.com/@HenryIXDJ" 
+          target="_blank" 
+          rel="noopener noreferrer" 
+          className="text-zinc-500 hover:text-primary transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer"
+          onMouseEnter={() => playTick()}
+          onClick={() => playClick(800, 'sine', 0.03)}
+        >
+          <span className="hidden md:inline">YOUTUBE</span>
+          <span className="md:hidden">YT</span>
+        </a>
       </motion.div>
 
       <motion.div 

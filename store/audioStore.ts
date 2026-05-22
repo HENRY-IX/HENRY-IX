@@ -31,6 +31,7 @@ export interface DeckState {
   syncEnabled: boolean;
   crossfaderAssign: 'L' | 'R' | 'THRU';
   waveformPeaks: number[];
+  cuePoints?: number[];
 }
 
 export interface AudioStoreState {
@@ -148,6 +149,7 @@ const INITIAL_DECKS: Record<number, DeckState> = {
     progress: 0, duration: 0, volume: 80, eqHi: 50, eqMid: 50, eqLow: 50,
     filter: 50, trim: 50, syncEnabled: false, crossfaderAssign: 'L',
     waveformPeaks: trackWaveforms['kc-1'] ?? generateStaticPeaks(500),
+    cuePoints: [0, 1127, 2112, 2772],
   },
   2: {
     id: 'kc-2', title: 'Knight Club: Session 2',

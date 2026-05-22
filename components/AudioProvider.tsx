@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useRef, useEffect, createContext, useContext, useMemo } from 'react';
+import { usePathname } from 'next/navigation';
 import { playClick, playLockoutBlip } from '@/lib/audioUtils';
 import { trackWaveforms } from '@/app/trackWaveforms';
 import { useAudioStore, generateStaticPeaks } from '@/store/audioStore';
@@ -730,6 +731,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
         id: track.id, title: track.title, url: track.url, link: track.link,
         bpm: track.bpm, isPlaying: true, progress: 0, scMode: false, isReady: false,
         waveformPeaks: trackWaveforms[track.id] || generateStaticPeaks(500),
+        cuePoints: track.cuePoints,
       });
     } else {
       // SoundCloud mode — lazily mount iframe if not yet done
@@ -741,6 +743,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
         id: track.id, title: track.title, url: track.url, link: track.link,
         bpm: track.bpm, isPlaying: true, progress: 0, scMode: true, isReady: false,
         waveformPeaks: trackWaveforms[track.id] || generateStaticPeaks(500),
+        cuePoints: track.cuePoints,
       });
       if (widget) {
         try {
@@ -930,6 +933,7 @@ const cacheWaveform = async (fileKey: string, data: { bpm: number; peaks: number
 // ---------------------------------------------------------------------------
 
 export function FloatingPlayer() {
+  const pathname = usePathname();
   const decks = useAudioStore(s => s.decks);
   const { togglePlayGlobal, playTrack } = useAudio() ?? {};
 
@@ -937,7 +941,7 @@ export function FloatingPlayer() {
   const loadedDecks = [1, 2, 3, 4].filter(id => decks[id]?.isReady);
   const displayDecks = activeDecks.length > 0 ? activeDecks : loadedDecks.length > 0 ? [loadedDecks[0]] : [];
 
-  if (displayDecks.length === 0) return null;
+  if (pathname === '/mixes' || displayDecks.length === 0) return null;
 
   return (
     <div className="fixed bottom-6 right-6 z-[60] flex flex-col gap-2">

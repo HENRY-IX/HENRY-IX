@@ -210,7 +210,7 @@ export default function GalleryPage() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.3 }}
-              className="fixed inset-0 z-[100] flex flex-col justify-between bg-black/95 backdrop-blur-xl p-4 md:p-8 select-none"
+              className="fixed inset-0 z-[100] flex flex-col justify-between bg-black/95 backdrop-blur-xl p-4 md:p-8 select-none overflow-y-auto md:overflow-hidden"
               onClick={() => startTransition(() => setActiveIdx(null))}
             >
               {/* Lightbox Header / Close */}
@@ -255,13 +255,13 @@ export default function GalleryPage() {
                   animate={{ scale: 1, opacity: 1 }}
                   exit={{ scale: 0.95, opacity: 0 }}
                   transition={{ type: 'tween', duration: 0.22, ease: 'easeOut' }}
-                  className="relative max-h-[60vh] md:max-h-[70vh] flex items-center justify-center rounded-xl overflow-hidden border border-zinc-900/60 shadow-[0_0_50px_rgba(0,0,0,0.8)] bg-zinc-950"
+                  className="relative max-h-[35vh] md:max-h-[70vh] flex items-center justify-center rounded-xl overflow-hidden border border-zinc-900/60 shadow-[0_0_50px_rgba(0,0,0,0.8)] bg-zinc-950"
                 >
                   <img
                     src={GALLERY_IMAGES[activeIdx].src}
                     alt={GALLERY_IMAGES[activeIdx].title}
                     decoding="async"
-                    className="max-w-full max-h-[60vh] md:max-h-[70vh] object-contain block pointer-events-none"
+                    className="max-w-full max-h-[35vh] md:max-h-[70vh] object-contain block pointer-events-none"
                   />
                   <div className="absolute inset-0 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.15)_50%)] bg-[length:100%_4px] pointer-events-none z-10 opacity-30" />
                 </motion.div>
@@ -302,7 +302,7 @@ export default function GalleryPage() {
                 </div>
 
                 {/* Technical Specifications Panel */}
-                <div className="flex gap-4 font-mono text-[9px] text-zinc-500 tracking-widest bg-zinc-950/90 border border-zinc-900 px-4 py-3 rounded-xl min-w-[280px] justify-between">
+                <div className="flex gap-4 font-mono text-[9px] text-zinc-500 tracking-widest bg-zinc-950/90 border border-zinc-900 px-4 py-3 rounded-xl min-w-0 w-full md:min-w-[280px] md:w-auto justify-between">
                   <div className="flex flex-col gap-1">
                     <span className="text-zinc-600 uppercase text-[8px]">EXPOSURE</span>
                     <span className="text-zinc-300 font-bold">{GALLERY_IMAGES[activeIdx].techSpecs.shutter} @ {GALLERY_IMAGES[activeIdx].techSpecs.aperture}</span>

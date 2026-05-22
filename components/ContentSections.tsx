@@ -20,7 +20,7 @@ export function Schedule({ isDepth }: { isDepth: boolean }) {
   return (
     <motion.section 
       id="schedule" 
-      className="w-full relative py-32 px-6 max-w-7xl mx-auto scroll-mt-24"
+      className="w-full relative py-16 md:py-32 px-6 max-w-7xl mx-auto scroll-mt-24"
       onViewportEnter={() => {
         setInView(true);
         playClick(700, 'sine', 0.05);
@@ -168,7 +168,7 @@ export function MailingList({ isDepth }: { isDepth: boolean }) {
   }, [email]);
 
   return (
-    <section className="w-full px-6 py-24 max-w-xl mx-auto flex flex-col items-center text-center">
+    <section className="w-full px-6 py-12 md:py-24 max-w-xl mx-auto flex flex-col items-center text-center">
       <h3 className="font-mono text-xl font-bold tracking-[0.2em] uppercase mb-4 text-primary">The Inner Circle</h3>
 
       
@@ -316,7 +316,7 @@ export function ContactForm({ isDepth }: { isDepth: boolean }) {
   }, [formData.details]);
 
   return (
-    <section id="booking" className="w-full relative py-32 px-6 max-w-7xl mx-auto flex flex-col items-center scroll-mt-24">
+    <section id="booking" className="w-full relative py-16 md:py-32 px-6 max-w-7xl mx-auto flex flex-col items-center scroll-mt-24">
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         whileInView={{ opacity: 1, y: 0 }}
@@ -466,7 +466,7 @@ export function ContactForm({ isDepth }: { isDepth: boolean }) {
               }}
               placeholder="EVENT_SPECIFICATIONS"
               className={cn(
-                 "w-full bg-transparent border-b py-2 font-mono text-xs focus:outline-none transition-colors resize-none",
+                 "w-full bg-transparent border-b h-8 py-1.5 font-mono text-xs focus:outline-none transition-colors resize-none overflow-hidden leading-normal",
                  isDepth ? "border-zinc-800 focus:border-primary text-white" : "border-black/20 focus:border-primary text-black"
               )}
             />
@@ -546,7 +546,7 @@ export function SocialLinks({ isDepth }: { isDepth: boolean }) {
   ];
 
   return (
-    <section className="w-full px-6 py-24 max-w-xl mx-auto flex flex-col items-center text-center border-t border-zinc-900/50 mt-12">
+    <section className="w-full px-6 py-12 md:py-24 max-w-xl mx-auto flex flex-col items-center text-center border-t border-zinc-900/50 mt-12">
       <h3 className="font-mono text-xl font-bold tracking-[0.2em] uppercase mb-8 text-primary">Socials</h3>
       <div className="flex flex-wrap justify-center gap-4 md:gap-6">
         {socialLinks.map((link) => (

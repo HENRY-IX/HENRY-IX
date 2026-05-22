@@ -684,7 +684,7 @@ function MixArchive({
 
   // --- Global Deck Controls for hotkeys and platters ---
 
-  const triggerHotCue = (deckId: number, percentage: number) => {
+  const triggerHotCue = (deckId: number, percentage: number, cueIndex?: number) => {
     const deck = decks[deckId];
     const isLocked = deck?.id === 'locked';
     if (isLocked) {
@@ -696,7 +696,12 @@ function MixArchive({
     playClick(1200, 'sine', 0.02);
 
     const duration = deck.duration || 300;
-    const seekPosSec = percentage * duration;
+    let seekPosSec = percentage * duration;
+
+    // Use absolute custom cue point if defined
+    if (deck.cuePoints && cueIndex !== undefined && deck.cuePoints[cueIndex] !== undefined) {
+      seekPosSec = deck.cuePoints[cueIndex];
+    }
 
     if (deck.scMode && widget) {
       try {
@@ -861,19 +866,19 @@ function MixArchive({
         togglePlayGlobal(leftDeckId);
       } else if (e.key === 'c' || e.key === 'C') {
         e.preventDefault();
-        triggerHotCue(leftDeckId, 0.0);
+        triggerHotCue(leftDeckId, 0.0, 0);
       } else if (e.key === '1') {
         e.preventDefault();
-        triggerHotCue(leftDeckId, 0.0);
+        triggerHotCue(leftDeckId, 0.0, 0);
       } else if (e.key === '2') {
         e.preventDefault();
-        triggerHotCue(leftDeckId, 0.25);
+        triggerHotCue(leftDeckId, 0.25, 1);
       } else if (e.key === '3') {
         e.preventDefault();
-        triggerHotCue(leftDeckId, 0.5);
+        triggerHotCue(leftDeckId, 0.5, 2);
       } else if (e.key === '4') {
         e.preventDefault();
-        triggerHotCue(leftDeckId, 0.75);
+        triggerHotCue(leftDeckId, 0.75, 3);
       }
 
       // Right Deck controls
@@ -882,19 +887,19 @@ function MixArchive({
         togglePlayGlobal(rightDeckId);
       } else if (e.key === 'l' || e.key === 'L') {
         e.preventDefault();
-        triggerHotCue(rightDeckId, 0.0);
+        triggerHotCue(rightDeckId, 0.0, 0);
       } else if (e.key === '7') {
         e.preventDefault();
-        triggerHotCue(rightDeckId, 0.0);
+        triggerHotCue(rightDeckId, 0.0, 0);
       } else if (e.key === '8') {
         e.preventDefault();
-        triggerHotCue(rightDeckId, 0.25);
+        triggerHotCue(rightDeckId, 0.25, 1);
       } else if (e.key === '9') {
         e.preventDefault();
-        triggerHotCue(rightDeckId, 0.5);
+        triggerHotCue(rightDeckId, 0.5, 2);
       } else if (e.key === '0') {
         e.preventDefault();
-        triggerHotCue(rightDeckId, 0.75);
+        triggerHotCue(rightDeckId, 0.75, 3);
       }
 
       // Mixer Arrow crossfader controls
@@ -960,7 +965,7 @@ function MixArchive({
     {
       title: "Knight Club",
       mixes: [
-        { id: 'kc-1', title: 'Knight Club: Session 1', url: 'https://6pnumwdmtebaxkbr.public.blob.vercel-storage.com/Knight%20Club%20Audio/Knight%20Club%20Session%201%20MP3.mp3', link: 'https://soundcloud.com/henryixdj/knight-club-session-1', bpm: 145, isLocalFile: true },
+        { id: 'kc-1', title: 'Knight Club: Session 1', url: 'https://6pnumwdmtebaxkbr.public.blob.vercel-storage.com/Knight%20Club%20Audio/Knight%20Club%20Session%201%20MP3.mp3', link: 'https://soundcloud.com/henryixdj/knight-club-session-1', bpm: 145, isLocalFile: true, cuePoints: [0, 1127, 2112, 2772] },
         { id: 'kc-2', title: 'Knight Club: Session 2', url: 'https://6pnumwdmtebaxkbr.public.blob.vercel-storage.com/Knight%20Club%20Audio/Knight%20Club%20Session%202%20MP3.mp3', link: 'https://soundcloud.com/henryixdj/knight-club-session-2', bpm: 152, isLocalFile: true },
         { id: 'kc-3', title: 'Knight Club: Session 3', url: 'https://6pnumwdmtebaxkbr.public.blob.vercel-storage.com/Knight%20Club%20Audio/Knight%20Club%20Session%203%20MP3.mp3', link: 'https://soundcloud.com/henryixdj/knight-club-session-3', bpm: 150, isLocalFile: true },
         { id: 'kc-4', title: 'Knight Club: Session 4', url: 'https://6pnumwdmtebaxkbr.public.blob.vercel-storage.com/Knight%20Club%20Audio/Knight%20Club%20Session%204%20MP3.mp3', link: 'https://soundcloud.com/henryixdj/33baa30a-4980-40da-94c2-41085314ec43', bpm: 155, isLocalFile: true }
@@ -1599,7 +1604,7 @@ function MixArchive({
             ].map((pad, idx) => (
               <motion.button
                 key={idx}
-                onClick={() => triggerHotCue(deckId, pad.val)}
+                onClick={() => triggerHotCue(deckId, pad.val, idx)}
                 whileHover={isLocked ? {} : { scale: 1.05 }}
                 whileTap={isLocked ? {} : { scale: 0.95 }}
                 className={cn(
@@ -2073,14 +2078,14 @@ function MixArchive({
     );
   };
   return (
-    <section id="vault" className="w-full relative pt-2 pb-2 px-2 md:px-4 max-w-[1800px] mx-auto overflow-hidden flex flex-col justify-center @container h-[calc(100dvh-5rem)]">
+    <section id="vault" className="w-full relative pt-2 pb-2 px-2 md:px-4 max-w-[1800px] mx-auto overflow-y-auto md:overflow-hidden flex flex-col justify-start md:justify-center @container h-auto md:h-[calc(100dvh-5rem)]">
 
  
       <div 
         ref={archiveRef} 
         onMouseMove={handleMouseMove}
         className={cn(
-          "relative w-full rounded-xl border border-dashed overflow-hidden flex flex-col gap-2 p-2 md:p-2.5 h-full",
+          "relative w-full rounded-xl border border-dashed overflow-y-auto md:overflow-hidden flex flex-col gap-2 p-2 md:p-2.5 h-auto md:h-full",
           isDepth ? "border-zinc-800 bg-zinc-950/40" : "border-black/20"
         )}
       >
@@ -2124,7 +2129,7 @@ function MixArchive({
             />
 
             {/* 3-Column DJ Controller Panel */}
-            <div className="w-full flex flex-col md:flex-row gap-4 items-stretch justify-center relative select-none flex-grow min-h-0 h-full">
+            <div className="w-full flex flex-col md:flex-row gap-4 items-stretch justify-center relative select-none flex-grow min-h-0 h-auto md:h-full">
               {/* Left Platter controller (A/B) */}
               <div className="w-full md:w-[38%] flex flex-col h-full min-h-0">
                 {renderPlatter(leftActiveDeck)}
