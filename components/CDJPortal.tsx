@@ -411,67 +411,93 @@ function DualDeckWaveforms({
           const halfH = laneH / 2;
           const PEAK_DENSITY = 4; // Matches the generated trackWaveforms density
 
-          const pixelShift = (progress * pixelsPerSecond) % step;
-
-          for (let x = -step; x < width + step; x += step) {
-            const drawX = x - pixelShift;
-            const barTime = progress + (drawX - centerX) / pixelsPerSecond;
-            if (barTime >= 0 && barTime <= (deck.duration || 300)) {
-              let hVal = 0.02;
-              if (deck.waveformPeaks && deck.waveformPeaks.length > 0) {
-                const exactIdx = barTime * PEAK_DENSITY;
-                const idxBase = Math.floor(exactIdx);
-                const fract = exactIdx - idxBase;
-                
-                const p0 = deck.waveformPeaks[idxBase] !== undefined 
-                  ? deck.waveformPeaks[idxBase] 
-                  : 0.02;
-                const p1 = deck.waveformPeaks[idxBase + 1] !== undefined 
-                  ? deck.waveformPeaks[idxBase + 1] 
-                  : p0;
-                  
-                hVal = p0 + (p1 - p0) * fract;
-              } else {
-                const idx = Math.floor(barTime * 14);
-                hVal = getWaveformHeight(deck.id, idx, deck.duration || 300);
-              }
+          const getPeakHeight = (time: number) => {
+            if (time < 0 || time > (deck.duration || 300)) return 0.02;
+            if (deck.waveformPeaks && deck.waveformPeaks.length > 0) {
+              const exactIdx = time * PEAK_DENSITY;
+              const idxBase = Math.floor(exactIdx);
+              const fract = exactIdx - idxBase;
               
-              const eqLow = deck.eqLow ?? 50;
-              const eqMid = deck.eqMid ?? 50;
-              const eqHi = deck.eqHi ?? 50;
-              const volume = deck.volume ?? 80;
-              
-              const lowMod = eqLow / 50;
-              const midMod = eqMid / 50;
-              const hiMod = eqHi / 50;
-              const volumeMod = volume / 80;
-              
-              // Dynamic frequency decomposition: Low, Mid, High stacked waves
-              const baseLow = hVal * (0.6 + 0.4 * Math.abs(Math.sin(barTime * beatFreq)));
-              const baseMid = hVal * (0.55 + 0.45 * Math.abs(Math.cos(barTime * 1.8 + 0.5)));
-              const baseHigh = hVal * (0.4 + 0.6 * Math.abs(Math.sin(barTime * beatFreq * 4 + 1.2)));
-
-              const lowHeight = Math.max(1, baseLow * (laneH - 6) * lowMod * volumeMod);
-              const midHeight = Math.max(1, baseMid * (laneH - 10) * midMod * volumeMod);
-              const highHeight = Math.max(1, baseHigh * (laneH - 14) * hiMod * volumeMod);
-
-              // 1. Low Band (Vivid Cyan/Blue foundation)
-              ctx.fillStyle = 'rgba(0, 162, 255, 1)';
-              ctx.fillRect(drawX, halfH - lowHeight / 2, barWidth, lowHeight);
-
-              // 2. Mid Band (Vivid Neon Orange)
-              ctx.fillStyle = 'rgba(255, 120, 0, 1)';
-              ctx.fillRect(drawX + 0.5, halfH - midHeight / 2, barWidth - 1, midHeight);
-
-              // 3. High Band (Pure Bright White)
-              ctx.fillStyle = 'rgba(255, 255, 255, 1)';
-              ctx.fillRect(drawX + 1, halfH - highHeight / 2, barWidth - 2, highHeight);
-
-            } else if (barTime < 0) {
-              ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
-              ctx.fillRect(drawX, halfH - 1, barWidth, 2);
+              const p0 = deck.waveformPeaks[idxBase] !== undefined 
+                ? deck.waveformPeaks[idxBase] 
+                : 0.02;
+              const p1 = deck.waveformPeaks[idxBase + 1] !== undefined 
+                ? deck.waveformPeaks[idxBase + 1] 
+                : p0;
+              return p0 + (p1 - p0) * fract;
+            } else {
+              const idx = Math.floor(time * 14);
+              return getWaveformHeight(deck.id, idx, deck.duration || 300);
             }
+          };
+
+          const points: { drawX: number; lowH: number; midH: number; highH: number }[] = [];
+
+          for (let drawX = 0; drawX < width; drawX += 2) {
+            const barTime = progress + (drawX - centerX) / pixelsPerSecond;
+            const hVal = getPeakHeight(barTime);
+
+            const eqLow = deck.eqLow ?? 50;
+            const eqMid = deck.eqMid ?? 50;
+            const eqHi = deck.eqHi ?? 50;
+            const volume = deck.volume ?? 80;
+            
+            const lowMod = eqLow / 50;
+            const midMod = eqMid / 50;
+            const hiMod = eqHi / 50;
+            const volumeMod = volume / 80;
+            
+            // Dynamic frequency decomposition: Low, Mid, High stacked waves
+            // Align low-frequency volume peak with exactly the beat line (using Math.cos instead of Math.sin)
+            const baseLow = hVal * (0.6 + 0.4 * Math.abs(Math.cos(barTime * beatFreq)));
+            const baseMid = hVal * (0.55 + 0.45 * Math.abs(Math.cos(barTime * 1.8 + 0.5)));
+            const baseHigh = hVal * (0.4 + 0.6 * Math.abs(Math.cos(barTime * beatFreq * 4 + 1.2)));
+
+            const lowHeight = Math.max(1, baseLow * (laneH - 6) * lowMod * volumeMod);
+            const midHeight = Math.max(1, baseMid * (laneH - 10) * midMod * volumeMod);
+            const highHeight = Math.max(1, baseHigh * (laneH - 14) * hiMod * volumeMod);
+
+            points.push({ drawX, lowH: lowHeight, midH: midHeight, highH: highHeight });
           }
+
+          // 1. Low Band (Vivid Cyan/Blue foundation)
+          ctx.fillStyle = 'rgba(0, 162, 255, 1)';
+          ctx.beginPath();
+          ctx.moveTo(0, halfH);
+          for (let i = 0; i < points.length; i++) {
+            ctx.lineTo(points[i].drawX, halfH - points[i].lowH / 2);
+          }
+          for (let i = points.length - 1; i >= 0; i--) {
+            ctx.lineTo(points[i].drawX, halfH + points[i].lowH / 2);
+          }
+          ctx.closePath();
+          ctx.fill();
+
+          // 2. Mid Band (Vivid Neon Orange)
+          ctx.fillStyle = 'rgba(255, 120, 0, 1)';
+          ctx.beginPath();
+          ctx.moveTo(0, halfH);
+          for (let i = 0; i < points.length; i++) {
+            ctx.lineTo(points[i].drawX, halfH - points[i].midH / 2);
+          }
+          for (let i = points.length - 1; i >= 0; i--) {
+            ctx.lineTo(points[i].drawX, halfH + points[i].midH / 2);
+          }
+          ctx.closePath();
+          ctx.fill();
+
+          // 3. High Band (Pure Bright White)
+          ctx.fillStyle = 'rgba(255, 255, 255, 1)';
+          ctx.beginPath();
+          ctx.moveTo(0, halfH);
+          for (let i = 0; i < points.length; i++) {
+            ctx.lineTo(points[i].drawX, halfH - points[i].highH / 2);
+          }
+          for (let i = points.length - 1; i >= 0; i--) {
+            ctx.lineTo(points[i].drawX, halfH + points[i].highH / 2);
+          }
+          ctx.closePath();
+          ctx.fill();
         }
 
         ctx.restore();
