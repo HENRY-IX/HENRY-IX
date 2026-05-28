@@ -248,6 +248,39 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
   // ── Initialize Audio DSP and preload on mount ────────────────────────────
   useEffect(() => {
     initAudioDSP();
+
+    const unlockAudio = () => {
+      if (audioContextRef.current) {
+        if (audioContextRef.current.state === 'suspended') {
+          audioContextRef.current.resume().catch(() => {});
+        }
+      }
+      
+      [1, 2, 3, 4].forEach(deckId => {
+        const audio = audioElementsRef.current[deckId];
+        if (audio) {
+          const playPromise = audio.play();
+          if (playPromise !== undefined) {
+            playPromise
+              .then(() => {
+                audio.pause();
+              })
+              .catch(() => {});
+          }
+        }
+      });
+
+      document.removeEventListener('click', unlockAudio);
+      document.removeEventListener('touchstart', unlockAudio);
+    };
+
+    document.addEventListener('click', unlockAudio);
+    document.addEventListener('touchstart', unlockAudio);
+
+    return () => {
+      document.removeEventListener('click', unlockAudio);
+      document.removeEventListener('touchstart', unlockAudio);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
